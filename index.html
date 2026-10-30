@@ -305,8 +305,70 @@ function cerrar() { if ($('dlg').open) $('dlg').close(); }
 
 const cabecera = (titulo, sub) => `<div class="dlg-cab"><button type="button" class="cerrar" data-cerrar aria-label="Cerrar">×</button><h2>${titulo}</h2>${sub ? `<p>${sub}</p>` : ''}</div>`;
 
-function cita(a) {
-  return `${a.autores.replace(/\s*;\s*/g, ', ')} (${a.anio}). ${a.titulo}. ${a.revista ? a.revista + '. ' : ''}${enlace(a)}`.trim();
+const META = {};
+
+function iniciales(nombres) {
+  return String(nombres || '').trim().split(/\s+/).filter(Boolean).map(p => p.split('-').map(x => x.replace(/\./g, '').charAt(0).toUpperCase() + '.').join('-')).join(' ');
+}
+
+function autorAPA(n) {
+  const i = n.indexOf(',');
+  if (i < 0) return n.trim();
+  const ap = n.slice(0, i).trim(), no = n.slice(i + 1).trim();
+  return no ? `${ap}, ${iniciales(no)}` : ap;
+}
+
+function autoresAPA(lista) {
+  const l = lista.map(autorAPA);
+  if (l.length <= 1) return l[0] || '';
+  if (l.length <= 20) return l.slice(0, -1).join(', ') + ', & ' + l[l.length - 1];
+  return l.slice(0, 19).join(', ') + ', . . . ' + l[l.length - 1];
+}
+
+async function metaCita(doi) {
+  if (!doi) return {};
+  if (META[doi]) return META[doi];
+  try {
+    const r = await fetch('https://api.crossref.org/works/' + encodeURIComponent(doi).replace(/%2F/gi, '/'));
+    if (!r.ok) return {};
+    const m = (await r.json()).message || {};
+    META[doi] = { volumen: m.volume || '', numero: m.issue || '', paginas: (m.page || '').replace(/-/g, '–'), articulo: m['article-number'] || '' };
+    return META[doi];
+  } catch (e) { return {}; }
+}
+
+function cita(a, m) {
+  m = m || {};
+  const fin = t => /[.?!]$/.test(t) ? t : t + '.';
+  const autores = autoresAPA(autoresDe(a));
+  const titulo = fin(String(a.titulo || '').trim());
+  const fuente = [];
+  if (a.revista) {
+    let f = `<i>${esc(a.revista)}</i>`;
+    if (m.volumen) f += `, <i>${esc(m.volumen)}</i>` + (m.numero ? `(${esc(m.numero)})` : '');
+    if (m.paginas) f += `, ${esc(m.paginas)}`;
+    else if (m.articulo) f += `, Artículo ${esc(m.articulo)}`;
+    fuente.push(f + '.');
+  }
+  const url = enlace(a);
+  const html = `${esc(fin(autores))} (${esc(a.anio || 's.f.')}). ${esc(titulo)} ${fuente.join(' ')}${url ? ' ' + esc(url) : ''}`.replace(/\s+/g, ' ').trim();
+  const texto = html.replace(/<[^>]+>/g, '').replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"').replace(/&#39;/g, "'");
+  return { html, texto };
+}
+
+function copiarCita(a) {
+  const datosCita = metaCita(a.doi).then(m => cita(a, m));
+  try {
+    if (window.ClipboardItem && navigator.clipboard && navigator.clipboard.write) {
+      const item = new ClipboardItem({
+        'text/html': datosCita.then(c => new Blob([c.html], { type: 'text/html' })),
+        'text/plain': datosCita.then(c => new Blob([c.texto], { type: 'text/plain' }))
+      });
+      navigator.clipboard.write([item]).then(() => aviso('Cita APA 7 copiada', 'ok')).catch(() => datosCita.then(c => copiar(c.texto, 'Cita APA 7 copiada')));
+      return;
+    }
+  } catch (e) {}
+  datosCita.then(c => copiar(c.texto, 'Cita APA 7 copiada'));
 }
 
 function copiar(txt, ok) {
@@ -1163,7 +1225,7 @@ function enlazar() {
     if ('programa' in d) { est.programa = d.programa; ['linea', 'autor', 'anio', 'cuartil', 'cohorte'].forEach(k => { est[k] = ''; }); preparar(); sincronizar(); }
     else if (d.det) detalle(d.det);
     else if (d.autor) { cerrar(); est.autor = d.autor; sincronizar(); ir(); }
-    else if (d.cita) { const a = datos.find(x => x.id === d.cita); if (a) copiar(cita(a), 'Cita copiada'); }
+    else if (d.cita) { const a = datos.find(x => x.id === d.cita); if (a) copiarCita(a); }
     else if (d.clave) { cerrar(); est.q = d.clave; sincronizar(); ir(); }
     else if (d.tema) { est.q = norm(est.q) === norm(d.tema) ? '' : d.tema; sincronizar(); }
     else if ('cerrar' in d) cerrar();
