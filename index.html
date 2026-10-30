@@ -82,7 +82,7 @@ a.hero-badge:hover{background:rgba(255,255,255,.16)}
 .rojo{color:var(--rojo)}
 .btn:disabled{opacity:.55;cursor:wait}
 .filtros{position:sticky;top:0;z-index:5;background:rgba(240,242,245,.96);backdrop-filter:blur(6px);border-bottom:1px solid var(--gris2)}
-.filtros-in{max-width:1200px;margin:0 auto;padding:14px 48px;display:grid;grid-template-columns:repeat(4,minmax(0,1fr)) auto;gap:10px;align-items:end}
+.filtros-in{max-width:1200px;margin:0 auto;padding:14px 48px;display:grid;grid-template-columns:repeat(5,minmax(0,1fr)) auto;gap:10px;align-items:end}
 .campo{display:flex;flex-direction:column;gap:4px;min-width:0}
 .campo label{font-size:12px;font-weight:500;color:var(--texto2)}
 .campo input,.campo select,.campo textarea,.sel{border:1px solid var(--gris2);border-radius:8px;padding:9px 11px;background:#fff;width:100%;font-size:14px}
@@ -167,6 +167,7 @@ footer{background:var(--azul);padding:24px 48px}
 .programas+.buscador{margin-top:14px}
 .item-prog{display:inline-block;font-size:11px;font-weight:600;color:var(--azul2);background:var(--azul-light);border-radius:20px;padding:2px 10px;margin:0 6px 8px 0}
 @media(max-width:680px){.programas{display:flex;width:100%}.programas button{flex:1;padding:8px 6px;font-size:12px}}
+.item-coh{display:inline-block;font-size:11px;font-weight:600;color:var(--texto2);background:var(--gris2);border-radius:20px;padding:2px 10px;margin:0 6px 8px 0}
 </style>
 </head>
 <body>
@@ -187,11 +188,11 @@ const seguro = u => /^https?:\/\//i.test(u || '') ? u : '';
 
 const sinEtiquetas = s => String(s || '').replace(/<[^>]+>/g, ' ').replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"').replace(/&#0?39;|&apos;/g, "'").replace(/\s+/g, ' ').trim();
 
-const CAMPOS = ['titulo', 'autores', 'anio', 'tipo', 'revista', 'cuartil', 'linea', 'palabras', 'doi', 'url', 'intellectum', 'resumen', 'programa'];
+const CAMPOS = ['titulo', 'autores', 'anio', 'tipo', 'revista', 'cuartil', 'linea', 'palabras', 'doi', 'url', 'intellectum', 'resumen', 'programa', 'cohorte', 'issn'];
 const PROGRAMAS = ['Doctorado en Educación', 'Doctorado en Innovación Educativa con uso de TIC', 'Ambos programas'];
 const CORTO = { 'Doctorado en Educación': 'Doctorado en Educación', 'Doctorado en Innovación Educativa con uso de TIC': 'DieTic', 'Ambos programas': 'Ambos doctorados' };
 
-const ENCABEZADOS = ['Título', 'Autores', 'Año', 'Tipo', 'Revista', 'Cuartil', 'Línea de investigación', 'Palabras clave', 'DOI', 'URL', 'Enlace Intellectum', 'Resumen', 'Programa'];
+const ENCABEZADOS = ['Título', 'Autores', 'Año', 'Tipo', 'Revista', 'Cuartil', 'Línea de investigación', 'Palabras clave', 'DOI', 'URL', 'Enlace Intellectum', 'Resumen', 'Programa', 'Cohorte', 'ISSN'];
 
 const TIPOS = ['Artículo', 'Capítulo de libro', 'Libro', 'Ponencia'];
 
@@ -234,6 +235,8 @@ function normalizar(o) {
   const q = ORDEN_Q.find(x => norm(x) === norm(a.cuartil));
   a.cuartil = q || '';
   a.programa = programaDe(a.programa);
+  const co = a.cohorte.replace(/\s/g, '').match(/^(\d{4})[-\/._]?([12])$/);
+  if (co) a.cohorte = co[1] + '-' + co[2];
   return a;
 }
 
@@ -286,6 +289,7 @@ function filtrar() {
     if (est.autor && !autoresDe(a).includes(est.autor)) return false;
     if (est.anio && a.anio !== est.anio) return false;
     if (est.cuartil && a.cuartil !== est.cuartil) return false;
+    if (est.cohorte && a.cohorte !== est.cohorte) return false;
     const txt = norm([a.titulo, a.autores, a.revista, a.palabras, a.linea, a.resumen, a.anio].join(' '));
     return t.every(x => txt.includes(x));
   }).sort(ORDENES[est.orden] || ORDENES.reciente);
@@ -326,7 +330,9 @@ async function consultarDoi(doi) {
   const m = (await r.json()).message;
   const f = (m.published || m['published-print'] || m['published-online'] || m.issued || {})['date-parts'];
   const tipos = { 'journal-article': 'Artículo', 'book-chapter': 'Capítulo de libro', 'book': 'Libro', 'monograph': 'Libro', 'proceedings-article': 'Ponencia' };
-  return normalizar({
+  const issn = (m.ISSN || []).join(', ');
+  const a = normalizar({
+    issn,
     titulo: (m.title || [''])[0],
     autores: (m.author || []).map(x => [x.family, x.given].filter(Boolean).join(', ') || x.name || '').filter(Boolean).join('; '),
     anio: f && f[0] && f[0][0] ? String(f[0][0]) : '',
@@ -337,6 +343,13 @@ async function consultarDoi(doi) {
     resumen: sinEtiquetas(m.abstract).replace(/^(Abstract|Resumen)\s*/i, ''),
     palabras: (m.subject || []).join('; ')
   });
+  if (issn && API) {
+    try {
+      const q = await api({ action: 'cuartil', issn });
+      if (q.ok && q.cuartil) a.cuartil = q.cuartil;
+    } catch (e) {}
+  }
+  return a;
 }
 
 async function completarDoi(btn) {
@@ -347,9 +360,9 @@ async function completarDoi(btn) {
   btn.textContent = 'Consultando…';
   try {
     const a = await consultarDoi(doi);
-    ['doi', 'titulo', 'autores', 'anio', 'revista', 'url', 'resumen', 'palabras'].forEach(k => { if (a[k]) f.elements[k].value = a[k]; });
+    ['doi', 'titulo', 'autores', 'anio', 'revista', 'url', 'resumen', 'palabras', 'cuartil', 'issn'].forEach(k => { if (a[k] && f.elements[k]) f.elements[k].value = a[k]; });
     f.elements.tipo.value = a.tipo;
-    aviso('Datos completados. Revíselos y agregue cuartil y línea.', 'ok');
+    aviso(a.cuartil ? `Datos completados. Cuartil ${a.cuartil} según SCImago.` : 'Datos completados. La revista no tiene cuartil en SCImago.', 'ok');
   } catch (e) {
     aviso('No se encontró ese DOI. Complete los datos manualmente.', 'error');
   } finally {
@@ -362,7 +375,7 @@ const duplicado = (a, lista, id) => lista.find(x => x.id !== id && ((a.doi && x.
 
 function dialogoDois() {
   abrir(`${cabecera('Agregar por DOI', 'Título, autores, año, revista y resumen se completan automáticamente.')}
-<div class="dlg-cuerpo"><div class="campo" style="margin-bottom:14px"><label for="loteProg">Programa doctoral de estas publicaciones <span class="req">*</span></label><select id="loteProg"><option value="">Seleccione…</option>${PROGRAMAS.map(p => `<option>${p}</option>`).join('')}</select></div><div class="campo"><label for="txtDois">DOI de las publicaciones</label><textarea id="txtDois" class="txt-grande" placeholder="10.3916/C78-2024-01&#10;https://doi.org/10.5294/edu.2023.26.1.4&#10;..."></textarea><span class="ayuda">Pegue uno por línea. Puede pegar los 46 de una vez, con o sin «https://doi.org/».</span></div><p class="progreso" id="progreso" aria-live="polite"></p></div>
+<div class="dlg-cuerpo"><div class="campo" style="margin-bottom:14px"><label for="loteProg">Programa doctoral de estas publicaciones <span class="req">*</span></label><select id="loteProg"><option value="">Seleccione…</option>${PROGRAMAS.map(p => `<option>${p}</option>`).join('')}</select></div><div class="campo" style="margin-bottom:14px"><label for="loteCohorte">Cohorte del estudiante autor</label><input id="loteCohorte" placeholder="2022-1" autocomplete="off"><span class="ayuda">Opcional. Formato año-periodo, por ejemplo 2022-1.</span></div><div class="campo"><label for="txtDois">DOI de las publicaciones</label><textarea id="txtDois" class="txt-grande" placeholder="10.3916/C78-2024-01&#10;https://doi.org/10.5294/edu.2023.26.1.4&#10;..."></textarea><span class="ayuda">Pegue uno por línea. Puede pegar los 46 de una vez, con o sin «https://doi.org/».</span></div><p class="progreso" id="progreso" aria-live="polite"></p></div>
 <div class="dlg-pie"><button class="btn btn-sec" data-cerrar>Cancelar</button><button class="btn" id="btnBuscar" data-accion="buscarDois">Buscar publicaciones</button></div>`);
 }
 
@@ -370,6 +383,8 @@ async function buscarDois() {
   const dois = unicos(($('txtDois').value.match(/10\.\d{4,9}\/[^\s,;"<>]+/g) || []).map(d => d.replace(/[.)\]]+$/, '')));
   const prog = $('loteProg').value;
   if (!prog) return aviso('Seleccione el programa doctoral', 'error');
+  const coh = cohorteLote();
+  if (coh === null) return;
   if (!dois.length) return aviso('No se encontraron DOI válidos en el texto', 'error');
   $('btnBuscar').disabled = true;
   $('txtDois').disabled = true;
@@ -378,7 +393,7 @@ async function buscarDois() {
   async function trabajador() {
     while (i < dois.length) {
       const d = dois[i++];
-      try { const a = await consultarDoi(d); a.programa = prog; res.push(a); } catch (e) { fallidos.push(d); }
+      try { const a = await consultarDoi(d); a.programa = prog; if (coh) a.cohorte = coh; res.push(a); } catch (e) { fallidos.push(d); }
       hechos++;
       $('progreso').textContent = `Consultando ${hechos} de ${dois.length}…`;
     }
@@ -395,17 +410,25 @@ async function buscarDois() {
   vistaPrevia(res, fallidos.length ? `No se encontraron ${fallidos.length}: ${fallidos.join(', ')}. Agréguelas manualmente.` : '');
 }
 
+function cohorteLote() {
+  const v = normalizar({ cohorte: ($('loteCohorte') || {}).value || '' }).cohorte;
+  if (v && !/^\d{4}-[12]$/.test(v)) { aviso('Escriba la cohorte con el formato año-periodo, por ejemplo 2022-1', 'error'); return null; }
+  return v;
+}
+
 function dialogoExcel() {
   abrir(`${cabecera('Pegar desde Excel', 'Copie las filas en Excel y péguelas aquí.')}
 <div class="dlg-cuerpo"><ol class="pasos"><li>Use la plantilla de carga o el Excel descargado del repositorio.</li><li>Llene una fila por publicación. Título, autores y año son obligatorios.</li><li>Seleccione desde la fila de encabezados hasta la última publicación, copie y pegue abajo.</li></ol>
 <p style="margin:14px 0"><button class="btn btn-sec" data-accion="plantilla">Descargar plantilla</button></p>
-<div class="campo" style="margin-bottom:14px"><label for="loteProg">Programa doctoral de estas publicaciones <span class="req">*</span></label><select id="loteProg"><option value="">Seleccione…</option>${PROGRAMAS.map(p => `<option>${p}</option>`).join('')}</select></div><div class="campo"><label for="txtExcel">Filas copiadas de Excel</label><textarea id="txtExcel" class="txt-grande" placeholder="Pegue aquí las filas"></textarea></div></div>
+<div class="campo" style="margin-bottom:14px"><label for="loteProg">Programa doctoral de estas publicaciones <span class="req">*</span></label><select id="loteProg"><option value="">Seleccione…</option>${PROGRAMAS.map(p => `<option>${p}</option>`).join('')}</select></div><div class="campo" style="margin-bottom:14px"><label for="loteCohorte">Cohorte del estudiante autor</label><input id="loteCohorte" placeholder="2022-1" autocomplete="off"><span class="ayuda">Opcional. Formato año-periodo, por ejemplo 2022-1.</span></div><div class="campo"><label for="txtExcel">Filas copiadas de Excel</label><textarea id="txtExcel" class="txt-grande" placeholder="Pegue aquí las filas"></textarea></div></div>
 <div class="dlg-pie"><button class="btn btn-sec" data-cerrar>Cancelar</button><button class="btn" data-accion="leerExcel">Revisar publicaciones</button></div>`);
 }
 
-const ALIAS = { titulo: 'titulo', autores: 'autores', autor: 'autores', anio: 'anio', ano: 'anio', tipo: 'tipo', revista: 'revista', 'revista o editorial': 'revista', cuartil: 'cuartil', linea: 'linea', 'linea de investigacion': 'linea', 'palabras clave': 'palabras', doi: 'doi', url: 'url', 'enlace al articulo': 'url', 'enlace intellectum': 'intellectum', 'enlace en intellectum': 'intellectum', resumen: 'resumen', programa: 'programa', 'programa doctoral': 'programa', doctorado: 'programa' };
+const ALIAS = { titulo: 'titulo', autores: 'autores', autor: 'autores', anio: 'anio', ano: 'anio', tipo: 'tipo', revista: 'revista', 'revista o editorial': 'revista', cuartil: 'cuartil', linea: 'linea', 'linea de investigacion': 'linea', 'palabras clave': 'palabras', doi: 'doi', url: 'url', 'enlace al articulo': 'url', 'enlace intellectum': 'intellectum', 'enlace en intellectum': 'intellectum', resumen: 'resumen', programa: 'programa', 'programa doctoral': 'programa', doctorado: 'programa', cohorte: 'cohorte', 'cohorte del estudiante': 'cohorte', 'cohorte del estudiante autor': 'cohorte', issn: 'issn' };
 
 function leerExcel() {
+  const coh = cohorteLote();
+  if (coh === null) return;
   const filas = $('txtExcel').value.split(/\r?\n/).filter(l => l.trim()).map(l => l.split('\t').map(x => x.replace(/^"|"$/g, '').trim()));
   if (!filas.length) return aviso('Pegue al menos una fila', 'error');
   let mapa = null;
@@ -418,6 +441,7 @@ function leerExcel() {
     m.forEach((k, i) => { if (k) o[k] = c[i] || ''; });
     const a = normalizar(o);
     if (!a.programa) a.programa = $('loteProg').value;
+    if (!a.cohorte && coh) a.cohorte = coh;
     if (a.titulo) res.push(a);
   });
   if (!res.length) return aviso('No se reconocieron filas. Copie también la fila de encabezados.', 'error');
@@ -453,7 +477,7 @@ async function exportar(btn) {
     const filas = orden.map(a => [a.id, ...CAMPOS.map(k => k === 'anio' && a.anio ? Number(a.anio) : a[k]), a.fecha]);
     const wb = X.utils.book_new();
     const ws = X.utils.aoa_to_sheet([cab, ...filas]);
-    ws['!cols'] = [10, 60, 45, 8, 18, 40, 12, 34, 40, 28, 36, 36, 80, 40, 16].map(w => ({ wch: w }));
+    ws['!cols'] = [10, 60, 45, 8, 18, 40, 12, 34, 40, 28, 36, 36, 80, 40, 12, 22, 16].map(w => ({ wch: w }));
     ws['!autofilter'] = { ref: X.utils.encode_range({ s: { r: 0, c: 0 }, e: { r: Math.max(filas.length, 1), c: cab.length - 1 } }) };
     X.utils.book_append_sheet(wb, ws, 'Publicaciones');
     const autores = unicos(datos.flatMap(autoresDe));
@@ -471,6 +495,7 @@ async function exportar(btn) {
       ['Publicaciones en Q1 y Q2', altos],
       ['Porcentaje en Q1 y Q2', datos.length ? Math.round(altos / datos.length * 1000) / 10 + '%' : '0%'],
       ...bloque('Programa', conteo(datos, a => a.programa || 'Sin programa')),
+      ...bloque('Cohorte', conteo(datos, a => a.cohorte || 'Sin cohorte'), (x, y) => String(y[0]).localeCompare(String(x[0]))),
       ...bloque('Año', conteo(datos, a => a.anio).map(([k, v]) => [Number(k), v]), (x, y) => x[0] - y[0]),
       ...bloque('Línea de investigación', conteo(datos, a => a.linea || 'Sin línea asignada')),
       ...bloque('Cuartil', conteo(datos, a => a.cuartil || 'Sin dato'), (x, y) => ORDEN_Q.concat('Sin dato').indexOf(x[0]) - ORDEN_Q.concat('Sin dato').indexOf(y[0])),
@@ -501,7 +526,7 @@ async function derivar(clave, sal, iter) {
 }
 
 function limpiarFiltros() {
-  ['q', 'linea', 'autor', 'anio', 'cuartil'].forEach(k => { est[k] = ''; });
+  ['q', 'linea', 'autor', 'anio', 'cuartil', 'cohorte'].forEach(k => { est[k] = ''; });
   sincronizar();
 }
 
@@ -520,10 +545,10 @@ const mapear = l => (Array.isArray(l) ? l : []).map(o => ({ id: String(o.id || '
 const BASE = mapear(leerJSON('datos', []));
 const campos = a => Object.fromEntries(CAMPOS.map(k => [k, a[k] || '']));
 let publicos = BASE, datos = BASE, admin = false, pendientes = [], fuente = API ? 'cargando' : 'archivo', migrar = [];
-const est = { programa: '', q: '', linea: '', autor: '', anio: '', cuartil: '', orden: 'reciente' };
+const est = { programa: '', q: '', linea: '', autor: '', anio: '', cuartil: '', cohorte: '', orden: 'reciente' };
 const ambito = () => est.programa ? datos.filter(a => a.programa === est.programa || a.programa === PROGRAMAS[2]) : datos;
 const conPrograma = (l, p) => l.map(a => a.programa ? a : { ...a, programa: p });
-const CONTROLES = { q: 'q', linea: 'fLinea', autor: 'fAutor', anio: 'fAnio', cuartil: 'fCuartil', orden: 'orden' };
+const CONTROLES = { q: 'q', linea: 'fLinea', autor: 'fAutor', anio: 'fAnio', cuartil: 'fCuartil', cohorte: 'fCohorte', orden: 'orden' };
 
 function documento(lista, config) {
   const limpia = lista.map(a => ({ id: a.id, ...campos(a), fecha: a.fecha || '' }));
@@ -619,6 +644,7 @@ function esqueleto() {
 <div class="campo"><label for="fAutor">Autor</label><select id="fAutor" class="sel"></select></div>
 <div class="campo"><label for="fAnio">Año</label><select id="fAnio" class="sel"></select></div>
 <div class="campo"><label for="fCuartil">Cuartil</label><select id="fCuartil" class="sel"></select></div>
+<div class="campo"><label for="fCohorte">Cohorte</label><select id="fCohorte" class="sel"></select></div>
 <div class="filtros-acc"><button class="btn btn-sec" data-accion="limpiar">Limpiar filtros</button></div>
 </div></div>
 <main>
@@ -640,7 +666,7 @@ function pintarGestion() {
   const s = sesion() || {};
   $('gestionCuerpo').innerHTML = API
     ? `<div class="gestion-tit">Gestión del repositorio<small>Conectado a Google Sheets. Cada cambio se publica al instante.</small></div>
-<div class="gestion-btns"><button class="btn" data-accion="dois">Agregar por DOI</button><button class="btn btn-sec" data-accion="enlace">Agregar por enlace o título</button><button class="btn btn-sec" data-accion="excel">Pegar desde Excel</button><button class="btn btn-sec" data-accion="nueva">Agregar manualmente</button><button class="btn btn-sec" data-accion="archivo">Importar desde index.html</button><button class="btn btn-sec" data-accion="exportar">Descargar Excel</button>${s.hoja ? `<a class="btn btn-aqua" href="${esc(s.hoja)}" target="_blank" rel="noopener">Abrir Google Sheets</a>` : ''}<button class="btn btn-sec" data-accion="clave">Cambiar clave</button><button class="btn btn-sec" data-accion="salir">Cerrar sesión</button></div>`
+<div class="gestion-btns"><button class="btn" data-accion="dois">Agregar por DOI</button><button class="btn btn-sec" data-accion="enlace">Agregar por enlace o título</button><button class="btn btn-sec" data-accion="excel">Pegar desde Excel</button><button class="btn btn-sec" data-accion="nueva">Agregar manualmente</button><button class="btn btn-sec" data-accion="archivo">Importar desde index.html</button><button class="btn btn-sec" data-accion="cuartiles">Completar cuartiles</button><button class="btn btn-sec" data-accion="exportar">Descargar Excel</button>${s.hoja ? `<a class="btn btn-aqua" href="${esc(s.hoja)}" target="_blank" rel="noopener">Abrir Google Sheets</a>` : ''}<button class="btn btn-sec" data-accion="clave">Cambiar clave</button><button class="btn btn-sec" data-accion="salir">Cerrar sesión</button></div>`
     : `<div class="gestion-tit">Configuración inicial<small>Conecte el repositorio a Google Sheets para publicar sin descargar archivos.</small></div>
 <div class="gestion-btns"><button class="btn btn-aqua" data-accion="conectar">Conectar con Google Sheets</button><button class="btn btn-sec" data-accion="salir">Salir</button></div>`;
 }
@@ -652,6 +678,7 @@ function preparar() {
   opciones('fAutor', [...autores].sort(es), 'Todos');
   opciones('fAnio', unicos(base.map(a => a.anio)).sort((a, b) => b - a), 'Todos');
   opciones('fCuartil', ORDEN_Q.filter(q => base.some(a => a.cuartil === q)), 'Todos');
+  opciones('fCohorte', unicos(base.map(a => a.cohorte)).sort().reverse(), 'Todas');
   $('kpis').innerHTML = `<div class="kpi-chip"><strong>${base.length}</strong><span>Publicaciones</span></div><div class="kpi-chip"><strong>${autores.length}</strong><span>Autores</span></div><div class="kpi-chip"><strong>${unicos(base.map(a => a.revista)).length}</strong><span>Revistas</span></div>`;
   const temas = temasFrecuentes();
   $('temas').hidden = !temas.length;
@@ -669,7 +696,7 @@ const editable = () => admin && !!API;
 function item(a) {
   const url = enlace(a), intel = seguro(a.intellectum);
   return `<article class="item"><div class="item-anio">${esc(a.anio || '—')}</div><div>
-${a.programa ? `<span class="item-prog">${esc(CORTO[a.programa] || a.programa)}</span>` : ''}${a.linea ? `<span class="item-linea">${esc(a.linea)}</span>` : ''}
+${a.programa ? `<span class="item-prog">${esc(CORTO[a.programa] || a.programa)}</span>` : ''}${a.cohorte ? `<span class="item-coh">Cohorte ${esc(a.cohorte)}</span>` : ''}${a.linea ? `<span class="item-linea">${esc(a.linea)}</span>` : ''}
 <h3><button class="item-titulo" data-det="${esc(a.id)}">${esc(a.titulo)}</button></h3>
 <p class="item-autores">${autoresDe(a).map(n => `<button class="autor" data-autor="${esc(n)}" title="Ver publicaciones de ${esc(n)}">${esc(n)}</button>`).join('; ')}</p>
 <p class="item-fuente">${a.revista ? `<em>${esc(a.revista)}</em>` : ''}${a.cuartil ? `<span class="q q-${esc(a.cuartil.replace(/\s/g, ''))}">${esc(a.cuartil)}</span>` : ''}</p>
@@ -705,9 +732,11 @@ function detalle(id) {
 ${a.programa ? `<dt>Programa</dt><dd>${esc(a.programa)}</dd>` : ''}
 <dt>Autores</dt><dd>${esc(a.autores)}</dd>
 ${a.revista ? `<dt>Revista</dt><dd>${esc(a.revista)}${a.cuartil ? ' (' + esc(a.cuartil) + ')' : ''}</dd>` : ''}
+${a.cohorte ? `<dt>Cohorte</dt><dd>${esc(a.cohorte)}</dd>` : ''}
 <dt>Año</dt><dd>${esc(a.anio)}</dd>
 <dt>Tipo</dt><dd>${esc(a.tipo)}</dd>
 ${a.doi ? `<dt>DOI</dt><dd>${esc(a.doi)}</dd>` : ''}
+${a.issn ? `<dt>ISSN</dt><dd>${esc(a.issn)}</dd>` : ''}
 ${claves.length ? `<dt>Palabras clave</dt><dd class="claves">${claves.map(k => `<button class="clave" data-clave="${esc(k)}">${esc(k)}</button>`).join('')}</dd>` : ''}
 </dl>${a.resumen ? `<p class="det-resumen">${esc(a.resumen)}</p>` : ''}
 <div class="item-acciones">${url ? `<a class="btn" href="${esc(url)}" target="_blank" rel="noopener">Ver artículo</a>` : ''}${intel ? `<a class="btn btn-sec" href="${esc(intel)}" target="_blank" rel="noopener">Ver en Intellectum</a>` : ''}<button class="btn btn-sec" data-cita="${esc(a.id)}">Copiar cita</button>${editable() ? `<button class="btn btn-sec" data-editar="${esc(a.id)}">Editar</button>` : ''}</div>
@@ -721,6 +750,7 @@ function formulario(id, pre) {
 ${cabecera(id ? 'Editar publicación' : 'Agregar publicación', id ? esc(id) : pre ? 'Datos encontrados. Revíselos, elija el programa y guarde.' : 'Escriba el DOI y los demás datos se completan solos.')}
 <div class="dlg-cuerpo form">
 ${campo('programa', 'Programa doctoral', a, { req: 1, ancho: 1, opciones: [['', 'Seleccione…'], ...PROGRAMAS.map(p => [p, p])] })}
+${campo('cohorte', 'Cohorte del estudiante autor', a, { ancho: 1, ph: '2022-1', ayuda: 'Opcional. Formato año-periodo, por ejemplo 2022-1.' })}
 ${campo('doi', 'DOI', a, { ancho: 1, doi: 1, ph: '10.xxxx/xxxxx' })}
 ${campo('titulo', 'Título', a, { req: 1, ancho: 1 })}
 ${campo('autores', 'Autores', a, { req: 1, ancho: 1, ayuda: 'Formato: Apellido, Nombre; Apellido, Nombre' })}
@@ -733,6 +763,7 @@ ${campo('palabras', 'Palabras clave', a, { ancho: 1, ayuda: 'Separadas por punto
 ${campo('url', 'Enlace al artículo', a, { ph: 'https://' })}
 ${campo('intellectum', 'Enlace en Intellectum', a, { ph: 'https://intellectum.unisabana.edu.co/' })}
 ${campo('resumen', 'Resumen', a, { area: 1, ancho: 1, ayuda: 'Máximo 1.000 caracteres' })}
+<input type="hidden" name="issn" value="${esc(a.issn || '')}">
 <datalist id="dlLineas">${unicos(datos.map(x => x.linea)).sort(es).map(l => `<option value="${esc(l)}">`).join('')}</datalist>
 </div>
 <div class="dlg-pie"><button type="button" class="btn btn-sec" data-cerrar>Cancelar</button><button type="submit" class="btn" id="btnGuardar">${id ? 'Guardar cambios' : 'Guardar publicación'}</button></div>
@@ -747,6 +778,7 @@ async function guardarFormulario(f) {
   a.resumen = a.resumen.slice(0, 1000);
   if (!a.programa) return aviso('Seleccione el programa doctoral', 'error');
   if (!a.titulo || !a.autores || !a.anio) return aviso('Complete título, autores y año (4 dígitos)', 'error');
+  if (a.cohorte && !/^\d{4}-[12]$/.test(a.cohorte)) return aviso('Escriba la cohorte con el formato año-periodo, por ejemplo 2022-1', 'error');
   const dup = duplicado(a, datos, id);
   if (dup) return aviso('Esta publicación ya existe como ' + dup.id, 'error');
   const b = $('btnGuardar');
@@ -832,6 +864,37 @@ async function buscarEnlace() {
   }
 }
 
+async function completarCuartiles(btn) {
+  const lista = datos.filter(a => !a.cuartil && a.doi);
+  if (!lista.length) return aviso('Todas las publicaciones con DOI ya tienen cuartil', 'ok');
+  btn.disabled = true;
+  let hechos = 0, sinCuartil = 0, fallos = 0;
+  for (let i = 0; i < lista.length; i++) {
+    const a = lista[i];
+    btn.textContent = `Revisando ${i + 1} de ${lista.length}…`;
+    try {
+      let issn = a.issn;
+      if (!issn) {
+        const r = await fetch('https://api.crossref.org/works/' + encodeURIComponent(a.doi).replace(/%2F/gi, '/'));
+        if (r.ok) issn = (((await r.json()).message || {}).ISSN || []).join(', ');
+      }
+      if (!issn) { fallos++; continue; }
+      const q = await api({ action: 'cuartil', issn });
+      const cuartil = q.ok ? q.cuartil : '';
+      if (!cuartil && issn === a.issn) { sinCuartil++; continue; }
+      await llamar({ action: 'guardar', id: a.id, ...campos(a), cuartil, issn });
+      if (cuartil) hechos++; else sinCuartil++;
+    } catch (e) {
+      if (!sesion()) return;
+      fallos++;
+    }
+  }
+  btn.disabled = false;
+  btn.textContent = 'Completar cuartiles';
+  await refrescar();
+  aviso(`${hechos} cuartiles completados${sinCuartil ? ` · ${sinCuartil} revistas sin cuartil en SCImago` : ''}${fallos ? ` · ${fallos} sin datos en Crossref` : ''}`, 'ok');
+}
+
 function confirmarEliminar(id) {
   const a = datos.find(x => x.id === id);
   if (!a) return;
@@ -859,8 +922,8 @@ function vistaPrevia(lista, nota) {
   pendientes.forEach((a, i) => { if (!a._dup && pendientes.slice(0, i).some(b => norm(b.titulo) === norm(a.titulo))) a._dup = true; });
   const nuevas = pendientes.filter(a => !a._dup).length;
   abrir(`${cabecera('Revise las publicaciones', `${pendientes.length} encontradas. Desmarque las que no quiera agregar.`)}
-<div class="dlg-cuerpo">${nota ? `<p class="progreso" style="margin:0 0 12px;color:var(--rojo)">${esc(nota)}</p>` : ''}<ul class="previa">${pendientes.map((a, i) => `<li><input type="checkbox" id="p${i}" data-pend="${i}"${a._dup ? '' : ' checked'}><label for="p${i}"><strong>${esc(a.titulo)}</strong><small>${esc(CORTO[a.programa] || 'Sin programa')} · ${esc(a.autores || 'Sin autores')} (${esc(a.anio || 'sin año')}). ${esc(a.revista)}</small>${a._dup ? '<br><span class="dup">Ya está en el repositorio</span>' : ''}${!a.anio || !a.autores ? '<br><span class="dup">Faltan autores o año: no se podrá guardar</span>' : ''}</label></li>`).join('')}</ul>
-<p class="progreso" id="progAgregar">Después puede agregar cuartil y línea de investigación con «Editar».</p></div>
+<div class="dlg-cuerpo">${nota ? `<p class="progreso" style="margin:0 0 12px;color:var(--rojo)">${esc(nota)}</p>` : ''}<ul class="previa">${pendientes.map((a, i) => `<li><input type="checkbox" id="p${i}" data-pend="${i}"${a._dup ? '' : ' checked'}><label for="p${i}"><strong>${esc(a.titulo)}</strong><small>${esc(CORTO[a.programa] || 'Sin programa')}${a.cohorte ? ' · Cohorte ' + esc(a.cohorte) : ''} · ${esc(a.autores || 'Sin autores')} (${esc(a.anio || 'sin año')}). ${esc(a.revista)}${a.cuartil ? ' · ' + esc(a.cuartil) : ''}</small>${a._dup ? '<br><span class="dup">Ya está en el repositorio</span>' : ''}${!a.anio || !a.autores ? '<br><span class="dup">Faltan autores o año: no se podrá guardar</span>' : ''}</label></li>`).join('')}</ul>
+<p class="progreso" id="progAgregar">El cuartil se tomó de SCImago cuando la revista está indexada. Puede ajustar cuartil, cohorte y línea con «Editar».</p></div>
 <div class="dlg-pie"><button class="btn btn-sec" data-cerrar>Cancelar</button><button class="btn" id="btnAgregar" data-accion="agregar">Agregar ${nuevas} publicaciones</button></div>`);
 }
 
@@ -1097,7 +1160,7 @@ function enlazar() {
     if (!t || t.disabled) return;
     const d = t.dataset;
     const ir = () => $('lista').scrollIntoView({ behavior: 'smooth' });
-    if ('programa' in d) { est.programa = d.programa; ['linea', 'autor', 'anio', 'cuartil'].forEach(k => { est[k] = ''; }); preparar(); sincronizar(); }
+    if ('programa' in d) { est.programa = d.programa; ['linea', 'autor', 'anio', 'cuartil', 'cohorte'].forEach(k => { est[k] = ''; }); preparar(); sincronizar(); }
     else if (d.det) detalle(d.det);
     else if (d.autor) { cerrar(); est.autor = d.autor; sincronizar(); ir(); }
     else if (d.cita) { const a = datos.find(x => x.id === d.cita); if (a) copiar(cita(a), 'Cita copiada'); }
@@ -1119,12 +1182,13 @@ function enlazar() {
       enlace: dialogoEnlace,
       buscarEnlace: () => buscarEnlace(t),
       usarDoi: () => usarDoi(t),
+      cuartiles: () => completarCuartiles(t),
       dois: dialogoDois,
       buscarDois,
       excel: dialogoExcel,
       leerExcel,
       archivo: dialogoArchivo,
-      plantilla: () => descargar('plantilla_produccion_cientifica.csv', csv([ENCABEZADOS, ['Título de ejemplo', 'Apellido, Nombre; Apellido, Nombre', '2025', 'Artículo', 'Nombre de la revista', 'Q2', 'Línea de investigación', 'palabra uno; palabra dos', '10.xxxx/xxxxx', '', '', '', 'Doctorado en Educación']]), 'text/csv;charset=utf-8'),
+      plantilla: () => descargar('plantilla_produccion_cientifica.csv', csv([ENCABEZADOS, ['Título de ejemplo', 'Apellido, Nombre; Apellido, Nombre', '2025', 'Artículo', 'Nombre de la revista', 'Q2', 'Línea de investigación', 'palabra uno; palabra dos', '10.xxxx/xxxxx', '', '', '', 'Doctorado en Educación', '2022-1', '']]), 'text/csv;charset=utf-8'),
       agregar: agregarPendientes,
       clave: dialogoClave,
       completarDoi: () => completarDoi(t)
@@ -1152,7 +1216,7 @@ function enlazar() {
   $('dlg').addEventListener('close', () => { if (!admin && location.hash === '#gestion') history.replaceState(null, '', location.pathname + location.search); });
   let espera;
   $('q').addEventListener('input', e => { clearTimeout(espera); espera = setTimeout(() => { est.q = e.target.value; pintar(); }, 150); });
-  ['linea', 'autor', 'anio', 'cuartil', 'orden'].forEach(k => $(CONTROLES[k]).addEventListener('change', e => { est[k] = e.target.value; pintar(); }));
+  ['linea', 'autor', 'anio', 'cuartil', 'cohorte', 'orden'].forEach(k => $(CONTROLES[k]).addEventListener('change', e => { est[k] = e.target.value; pintar(); }));
   window.addEventListener('hashchange', modoGestion);
 }
 
