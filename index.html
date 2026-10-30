@@ -288,7 +288,7 @@ function filtrar() {
     if (est.linea && a.linea !== est.linea) return false;
     if (est.autor && !autoresDe(a).includes(est.autor)) return false;
     if (est.anio && a.anio !== est.anio) return false;
-    if (est.cuartil && a.cuartil !== est.cuartil) return false;
+    if (est.cuartil === 'Sin cuartil' ? (a.cuartil && a.cuartil !== 'Sin cuartil') : (est.cuartil && a.cuartil !== est.cuartil)) return false;
     if (est.cohorte && a.cohorte !== est.cohorte) return false;
     const txt = norm([a.titulo, a.autores, a.revista, a.palabras, a.linea, a.resumen, a.anio].join(' '));
     return t.every(x => txt.includes(x));
@@ -739,7 +739,7 @@ function preparar() {
   opciones('fLinea', unicos(base.map(a => a.linea)).sort(es), 'Todas');
   opciones('fAutor', [...autores].sort(es), 'Todos');
   opciones('fAnio', unicos(base.map(a => a.anio)).sort((a, b) => b - a), 'Todos');
-  opciones('fCuartil', ORDEN_Q.filter(q => base.some(a => a.cuartil === q)), 'Todos');
+  opciones('fCuartil', ORDEN_Q.filter(q => q === 'Sin cuartil' ? base.some(a => !a.cuartil || a.cuartil === q) : base.some(a => a.cuartil === q)), 'Todos');
   opciones('fCohorte', unicos(base.map(a => a.cohorte)).sort().reverse(), 'Todas');
   $('kpis').innerHTML = `<div class="kpi-chip"><strong>${base.length}</strong><span>Publicaciones</span></div><div class="kpi-chip"><strong>${autores.length}</strong><span>Autores</span></div><div class="kpi-chip"><strong>${unicos(base.map(a => a.revista)).length}</strong><span>Revistas</span></div>`;
   const temas = temasFrecuentes();
