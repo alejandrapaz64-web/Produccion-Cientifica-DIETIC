@@ -168,6 +168,7 @@ footer{background:var(--azul);padding:24px 48px}
 .item-prog{display:inline-block;font-size:11px;font-weight:600;color:var(--azul2);background:var(--azul-light);border-radius:20px;padding:2px 10px;margin:0 6px 8px 0}
 @media(max-width:680px){.programas{display:flex;width:100%}.programas button{flex:1;padding:8px 6px;font-size:12px}}
 .item-coh{display:inline-block;font-size:11px;font-weight:600;color:var(--texto2);background:var(--gris2);border-radius:20px;padding:2px 10px;margin:0 6px 8px 0}
+.previa select{border:1px solid var(--gris2);border-radius:8px;padding:8px 10px;background:#fff;width:100%;font-size:13px}
 </style>
 </head>
 <body>
@@ -216,6 +217,21 @@ const ORDENES = {
   titulo: (a, b) => es(a.titulo, b.titulo)
 };
 
+const LINEAS = ['Pedagogía e Infancia', 'Institución Educativa, Currículo y Gestión', 'Integración Educativa de las Tecnologías de la Información y la Comunicación (TIC)'];
+
+function lineaDe(v) {
+  const n = norm(v);
+  if (!n) return '';
+  const exacta = LINEAS.find(l => norm(l) === n);
+  if (exacta) return exacta;
+  if (/^1\b/.test(n) || n.includes('infancia')) return LINEAS[0];
+  if (/^2\b/.test(n) || n.includes('curricul') || n.includes('gestion')) return LINEAS[1];
+  if (/^3\b/.test(n) || n.includes('tic') || n.includes('tecnolog')) return LINEAS[2];
+  return String(v).trim();
+}
+
+const opcionesLinea = actual => [['', 'Seleccione…'], ...LINEAS.map(l => [l, l]), ...(actual && !LINEAS.includes(actual) ? [[actual, actual + ' (anterior)']] : [])];
+
 function programaDe(v) {
   const n = norm(v);
   if (!n) return '';
@@ -235,6 +251,7 @@ function normalizar(o) {
   const q = ORDEN_Q.find(x => norm(x) === norm(a.cuartil));
   a.cuartil = q || '';
   a.programa = programaDe(a.programa);
+  a.linea = lineaDe(a.linea);
   const co = a.cohorte.replace(/\s/g, '').match(/^(\d{4})[-\/._]?([12])$/);
   if (co) a.cohorte = co[1] + '-' + co[2];
   return a;
@@ -437,7 +454,7 @@ const duplicado = (a, lista, id) => lista.find(x => x.id !== id && ((a.doi && x.
 
 function dialogoDois() {
   abrir(`${cabecera('Agregar por DOI', 'Título, autores, año, revista y resumen se completan automáticamente.')}
-<div class="dlg-cuerpo"><div class="campo" style="margin-bottom:14px"><label for="loteProg">Programa doctoral de estas publicaciones <span class="req">*</span></label><select id="loteProg"><option value="">Seleccione…</option>${PROGRAMAS.map(p => `<option>${p}</option>`).join('')}</select></div><div class="campo" style="margin-bottom:14px"><label for="loteCohorte">Cohorte del estudiante autor</label><input id="loteCohorte" placeholder="2022-1" autocomplete="off"><span class="ayuda">Opcional. Formato año-periodo, por ejemplo 2022-1.</span></div><div class="campo"><label for="txtDois">DOI de las publicaciones</label><textarea id="txtDois" class="txt-grande" placeholder="10.3916/C78-2024-01&#10;https://doi.org/10.5294/edu.2023.26.1.4&#10;..."></textarea><span class="ayuda">Pegue uno por línea. Puede pegar los 46 de una vez, con o sin «https://doi.org/».</span></div><p class="progreso" id="progreso" aria-live="polite"></p></div>
+<div class="dlg-cuerpo"><div class="campo" style="margin-bottom:14px"><label for="loteProg">Programa doctoral de estas publicaciones <span class="req">*</span></label><select id="loteProg"><option value="">Seleccione…</option>${PROGRAMAS.map(p => `<option>${p}</option>`).join('')}</select></div><div class="campo" style="margin-bottom:14px"><label for="loteLinea">Línea de investigación</label><select id="loteLinea">${opcionesLinea('').map(x => `<option value="${esc(x[0])}">${esc(x[0] ? x[1] : 'Asignar después')}</option>`).join('')}</select></div><div class="campo" style="margin-bottom:14px"><label for="loteCohorte">Cohorte del estudiante autor</label><input id="loteCohorte" placeholder="2022-1" autocomplete="off"><span class="ayuda">Opcional. Formato año-periodo, por ejemplo 2022-1.</span></div><div class="campo"><label for="txtDois">DOI de las publicaciones</label><textarea id="txtDois" class="txt-grande" placeholder="10.3916/C78-2024-01&#10;https://doi.org/10.5294/edu.2023.26.1.4&#10;..."></textarea><span class="ayuda">Pegue uno por línea. Puede pegar los 46 de una vez, con o sin «https://doi.org/».</span></div><p class="progreso" id="progreso" aria-live="polite"></p></div>
 <div class="dlg-pie"><button class="btn btn-sec" data-cerrar>Cancelar</button><button class="btn" id="btnBuscar" data-accion="buscarDois">Buscar publicaciones</button></div>`);
 }
 
@@ -447,6 +464,7 @@ async function buscarDois() {
   if (!prog) return aviso('Seleccione el programa doctoral', 'error');
   const coh = cohorteLote();
   if (coh === null) return;
+  const lin = ($('loteLinea') || {}).value || '';
   if (!dois.length) return aviso('No se encontraron DOI válidos en el texto', 'error');
   $('btnBuscar').disabled = true;
   $('txtDois').disabled = true;
@@ -455,7 +473,7 @@ async function buscarDois() {
   async function trabajador() {
     while (i < dois.length) {
       const d = dois[i++];
-      try { const a = await consultarDoi(d); a.programa = prog; if (coh) a.cohorte = coh; res.push(a); } catch (e) { fallidos.push(d); }
+      try { const a = await consultarDoi(d); a.programa = prog; if (coh) a.cohorte = coh; if (lin) a.linea = lin; res.push(a); } catch (e) { fallidos.push(d); }
       hechos++;
       $('progreso').textContent = `Consultando ${hechos} de ${dois.length}…`;
     }
@@ -482,7 +500,7 @@ function dialogoExcel() {
   abrir(`${cabecera('Pegar desde Excel', 'Copie las filas en Excel y péguelas aquí.')}
 <div class="dlg-cuerpo"><ol class="pasos"><li>Use la plantilla de carga o el Excel descargado del repositorio.</li><li>Llene una fila por publicación. Título, autores y año son obligatorios.</li><li>Seleccione desde la fila de encabezados hasta la última publicación, copie y pegue abajo.</li></ol>
 <p style="margin:14px 0"><button class="btn btn-sec" data-accion="plantilla">Descargar plantilla</button></p>
-<div class="campo" style="margin-bottom:14px"><label for="loteProg">Programa doctoral de estas publicaciones <span class="req">*</span></label><select id="loteProg"><option value="">Seleccione…</option>${PROGRAMAS.map(p => `<option>${p}</option>`).join('')}</select></div><div class="campo" style="margin-bottom:14px"><label for="loteCohorte">Cohorte del estudiante autor</label><input id="loteCohorte" placeholder="2022-1" autocomplete="off"><span class="ayuda">Opcional. Formato año-periodo, por ejemplo 2022-1.</span></div><div class="campo"><label for="txtExcel">Filas copiadas de Excel</label><textarea id="txtExcel" class="txt-grande" placeholder="Pegue aquí las filas"></textarea></div></div>
+<div class="campo" style="margin-bottom:14px"><label for="loteProg">Programa doctoral de estas publicaciones <span class="req">*</span></label><select id="loteProg"><option value="">Seleccione…</option>${PROGRAMAS.map(p => `<option>${p}</option>`).join('')}</select></div><div class="campo" style="margin-bottom:14px"><label for="loteLinea">Línea de investigación</label><select id="loteLinea">${opcionesLinea('').map(x => `<option value="${esc(x[0])}">${esc(x[0] ? x[1] : 'Asignar después')}</option>`).join('')}</select></div><div class="campo" style="margin-bottom:14px"><label for="loteCohorte">Cohorte del estudiante autor</label><input id="loteCohorte" placeholder="2022-1" autocomplete="off"><span class="ayuda">Opcional. Formato año-periodo, por ejemplo 2022-1.</span></div><div class="campo"><label for="txtExcel">Filas copiadas de Excel</label><textarea id="txtExcel" class="txt-grande" placeholder="Pegue aquí las filas"></textarea></div></div>
 <div class="dlg-pie"><button class="btn btn-sec" data-cerrar>Cancelar</button><button class="btn" data-accion="leerExcel">Revisar publicaciones</button></div>`);
 }
 
@@ -504,6 +522,7 @@ function leerExcel() {
     const a = normalizar(o);
     if (!a.programa) a.programa = $('loteProg').value;
     if (!a.cohorte && coh) a.cohorte = coh;
+    if (!a.linea && $('loteLinea').value) a.linea = $('loteLinea').value;
     if (a.titulo) res.push(a);
   });
   if (!res.length) return aviso('No se reconocieron filas. Copie también la fila de encabezados.', 'error');
@@ -728,7 +747,7 @@ function pintarGestion() {
   const s = sesion() || {};
   $('gestionCuerpo').innerHTML = API
     ? `<div class="gestion-tit">Gestión del repositorio<small>Conectado a Google Sheets. Cada cambio se publica al instante.</small></div>
-<div class="gestion-btns"><button class="btn" data-accion="dois">Agregar por DOI</button><button class="btn btn-sec" data-accion="enlace">Agregar por enlace o título</button><button class="btn btn-sec" data-accion="excel">Pegar desde Excel</button><button class="btn btn-sec" data-accion="nueva">Agregar manualmente</button><button class="btn btn-sec" data-accion="archivo">Importar desde index.html</button><button class="btn btn-sec" data-accion="cuartiles">Completar cuartiles</button><button class="btn btn-sec" data-accion="exportar">Descargar Excel</button>${s.hoja ? `<a class="btn btn-aqua" href="${esc(s.hoja)}" target="_blank" rel="noopener">Abrir Google Sheets</a>` : ''}<button class="btn btn-sec" data-accion="clave">Cambiar clave</button><button class="btn btn-sec" data-accion="salir">Cerrar sesión</button></div>`
+<div class="gestion-btns"><button class="btn" data-accion="dois">Agregar por DOI</button><button class="btn btn-sec" data-accion="enlace">Agregar por enlace o título</button><button class="btn btn-sec" data-accion="excel">Pegar desde Excel</button><button class="btn btn-sec" data-accion="nueva">Agregar manualmente</button><button class="btn btn-sec" data-accion="archivo">Importar desde index.html</button><button class="btn btn-sec" data-accion="lineas">Asignar líneas</button><button class="btn btn-sec" data-accion="cuartiles">Completar cuartiles</button><button class="btn btn-sec" data-accion="exportar">Descargar Excel</button>${s.hoja ? `<a class="btn btn-aqua" href="${esc(s.hoja)}" target="_blank" rel="noopener">Abrir Google Sheets</a>` : ''}<button class="btn btn-sec" data-accion="clave">Cambiar clave</button><button class="btn btn-sec" data-accion="salir">Cerrar sesión</button></div>`
     : `<div class="gestion-tit">Configuración inicial<small>Conecte el repositorio a Google Sheets para publicar sin descargar archivos.</small></div>
 <div class="gestion-btns"><button class="btn btn-aqua" data-accion="conectar">Conectar con Google Sheets</button><button class="btn btn-sec" data-accion="salir">Salir</button></div>`;
 }
@@ -820,7 +839,7 @@ ${campo('anio', 'Año', a, { req: 1, num: 1 })}
 ${campo('tipo', 'Tipo', a, { opciones: TIPOS.map(t => [t, t]) })}
 ${campo('revista', 'Revista o editorial', a, { ancho: 1 })}
 ${campo('cuartil', 'Cuartil', a, { opciones: [['', 'Sin dato'], ...ORDEN_Q.map(q => [q, q])] })}
-${campo('linea', 'Línea de investigación', a, { lista: 1 })}
+${campo('linea', 'Línea de investigación', a, { opciones: opcionesLinea(a.linea) })}
 ${campo('palabras', 'Palabras clave', a, { ancho: 1, ayuda: 'Separadas por punto y coma' })}
 ${campo('url', 'Enlace al artículo', a, { ph: 'https://' })}
 ${campo('intellectum', 'Enlace en Intellectum', a, { ph: 'https://intellectum.unisabana.edu.co/' })}
@@ -956,6 +975,29 @@ async function completarCuartiles(btn) {
   btn.textContent = 'Completar cuartiles';
   await refrescar();
   aviso(`${hechos} cuartiles completados${sinCuartil ? ` · ${sinCuartil} revistas sin cuartil en SCImago` : ''}${fallos ? ` · ${fallos} sin datos en Crossref` : ''}`, 'ok');
+}
+
+function dialogoLineas(todas) {
+  const lista = [...datos].filter(a => todas || !LINEAS.includes(a.linea)).sort(ORDENES.reciente);
+  if (!lista.length) return abrir(`${cabecera('Asignar líneas de investigación', 'Todas las publicaciones ya tienen línea.')}<div class="dlg-pie"><button class="btn btn-sec" data-accion="lineasTodas">Ver todas</button><button class="btn" data-cerrar>Entendido</button></div>`);
+  abrir(`${cabecera('Asignar líneas de investigación', `${lista.length} publicaciones${todas ? '' : ' sin línea'}. Elija la línea de cada una y guarde una sola vez.`)}
+<div class="dlg-cuerpo"><ul class="previa">${lista.map(a => `<li style="grid-template-columns:1fr;gap:6px"><div><strong>${esc(a.titulo)}</strong><small>${esc(a.id)} · ${esc(CORTO[a.programa] || '')} · ${esc(a.anio)} · ${esc(a.revista)}</small></div><select data-linea="${esc(a.id)}">${opcionesLinea(a.linea).map(x => `<option value="${esc(x[0])}"${x[0] === a.linea ? ' selected' : ''}>${esc(x[1])}</option>`).join('')}</select></li>`).join('')}</ul>
+<p class="progreso" id="progLineas"></p></div>
+<div class="dlg-pie">${todas ? '' : '<button class="btn btn-sec" data-accion="lineasTodas">Ver todas</button>'}<button class="btn btn-sec" data-cerrar>Cancelar</button><button class="btn" data-accion="guardarLineas">Guardar líneas</button></div>`);
+}
+
+async function guardarLineas(btn) {
+  const cambios = [...document.querySelectorAll('[data-linea]')].map(sel => ({ a: datos.find(x => x.id === sel.dataset.linea), linea: sel.value })).filter(c => c.a && c.linea && c.linea !== c.a.linea);
+  if (!cambios.length) return aviso('No hay cambios para guardar', 'error');
+  document.querySelectorAll('#dlg button, #dlg select').forEach(b => { b.disabled = true; });
+  let ok = 0;
+  for (let i = 0; i < cambios.length; i++) {
+    $('progLineas').textContent = `Guardando ${i + 1} de ${cambios.length}…`;
+    try { await llamar({ action: 'guardar', id: cambios[i].a.id, ...campos(cambios[i].a), linea: cambios[i].linea }); ok++; }
+    catch (e) { if (!sesion()) return; }
+  }
+  cerrar();
+  await refrescar(`${ok} líneas de investigación guardadas`);
 }
 
 async function asegurarCuartil(a) {
@@ -1261,6 +1303,9 @@ function enlazar() {
       buscarEnlace: () => buscarEnlace(t),
       usarDoi: () => usarDoi(t),
       cuartiles: () => completarCuartiles(t),
+      lineas: () => dialogoLineas(false),
+      lineasTodas: () => dialogoLineas(true),
+      guardarLineas: () => guardarLineas(t),
       dois: dialogoDois,
       buscarDois,
       excel: dialogoExcel,
