@@ -847,7 +847,8 @@ async function guardarFormulario(f) {
   b.disabled = true;
   b.textContent = 'Guardando en Google Sheets…';
   try {
-    const r = await llamar({ action: 'guardar', id: id || '', ...a });
+    const final = id ? a : await asegurarCuartil(a);
+    const r = await llamar({ action: 'guardar', id: id || '', ...final });
     cerrar();
     await refrescar(id ? 'Cambios guardados y publicados' : 'Publicación ' + r.publicacion.id + ' guardada y publicada');
   } catch (e) {
@@ -957,6 +958,20 @@ async function completarCuartiles(btn) {
   aviso(`${hechos} cuartiles completados${sinCuartil ? ` · ${sinCuartil} revistas sin cuartil en SCImago` : ''}${fallos ? ` · ${fallos} sin datos en Crossref` : ''}`, 'ok');
 }
 
+async function asegurarCuartil(a) {
+  if (a.cuartil || !a.doi || !API) return a;
+  try {
+    let issn = a.issn;
+    if (!issn) {
+      const r = await fetch('https://api.crossref.org/works/' + encodeURIComponent(a.doi).replace(/%2F/gi, '/'));
+      if (r.ok) issn = (((await r.json()).message || {}).ISSN || []).join(', ');
+    }
+    if (!issn) return a;
+    const q = await api({ action: 'cuartil', issn });
+    return { ...a, issn, cuartil: q.ok && q.cuartil ? q.cuartil : a.cuartil };
+  } catch (e) { return a; }
+}
+
 function confirmarEliminar(id) {
   const a = datos.find(x => x.id === id);
   if (!a) return;
@@ -998,7 +1013,8 @@ async function agregarPendientes() {
   for (let i = 0; i < marcadas.length; i++) {
     $('progAgregar').textContent = `Guardando ${i + 1} de ${marcadas.length} en Google Sheets…`;
     try {
-      await llamar({ action: 'guardar', ...campos(marcadas[i]), resumen: (marcadas[i].resumen || '').slice(0, 1000), fecha: marcadas[i].fecha || '' });
+      const m = await asegurarCuartil(marcadas[i]);
+      await llamar({ action: 'guardar', ...campos(m), resumen: (m.resumen || '').slice(0, 1000), fecha: m.fecha || '' });
       ok++;
     } catch (e) {
       if (!sesion()) return;
