@@ -284,7 +284,7 @@ function opciones(id, valores, todos) {
 
 function temasFrecuentes() {
   const cuenta = new Map();
-  datos.forEach(a => unicos(a.palabras.split(/[;,]/).map(s => s.trim())).forEach(k => {
+  ambito().forEach(a => unicos(a.palabras.split(/[;,]/).map(s => s.trim())).forEach(k => {
     const n = norm(k);
     if (!n) return;
     const c = cuenta.get(n) || { t: k, n: 0 };
@@ -767,6 +767,12 @@ function pintarGestion() {
 
 function preparar() {
   const base = ambito();
+  document.querySelectorAll('.programas [data-programa]').forEach(b => {
+    if (!b.dataset.etq) b.dataset.etq = b.textContent;
+    const p = b.dataset.programa;
+    const n = p ? datos.filter(a => a.programa === p || a.programa === PROGRAMAS[2]).length : datos.length;
+    b.textContent = b.dataset.etq + ' (' + n + ')';
+  });
   const autores = unicos(base.flatMap(autoresDe));
   opciones('fLinea', unicos(base.map(a => a.linea)).sort(es), 'Todas');
   opciones('fAutor', [...autores].sort(es), 'Todos');
@@ -804,6 +810,8 @@ function pintar() {
   const nota = fuente === 'respaldo' ? ' · copia de respaldo' : '';
   document.querySelectorAll('[data-programa]').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.programa === est.programa)));
   const total = ambito().length;
+  const filtros = document.querySelector('.filtros');
+  if (filtros) filtros.hidden = !total;
   if (!total) {
     $('conteo').textContent = '';
     $('lista').innerHTML = editable()
