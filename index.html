@@ -760,7 +760,7 @@ function pintarGestion() {
   const s = sesion() || {};
   $('gestionCuerpo').innerHTML = API
     ? `<div class="gestion-tit">Gestión del repositorio<small>Conectado a Google Sheets. Cada cambio se publica al instante.</small></div>
-<div class="gestion-btns"><button class="btn" data-accion="dois">Agregar por DOI</button><button class="btn btn-sec" data-accion="enlace">Agregar por enlace o título</button><button class="btn btn-sec" data-accion="excel">Pegar desde Excel</button><button class="btn btn-sec" data-accion="nueva">Agregar manualmente</button><button class="btn btn-sec" data-accion="archivo">Importar desde index.html</button><button class="btn btn-sec" data-accion="lineas">Asignar líneas</button><button class="btn btn-sec" data-accion="cuartiles">Completar cuartiles</button><button class="btn btn-sec" data-accion="exportar">Descargar Excel</button>${s.hoja ? `<a class="btn btn-aqua" href="${esc(s.hoja)}" target="_blank" rel="noopener">Abrir Google Sheets</a>` : ''}<button class="btn btn-sec" data-accion="clave">Cambiar clave</button><button class="btn btn-sec" data-accion="salir">Cerrar sesión</button></div>`
+<div class="gestion-btns"><button class="btn" data-accion="dois">Agregar por DOI</button><button class="btn btn-sec" data-accion="enlace">Agregar por enlace o título</button><button class="btn btn-sec" data-accion="excel">Pegar desde Excel</button><button class="btn btn-sec" data-accion="nueva">Agregar manualmente</button><button class="btn btn-sec" data-accion="archivo">Importar desde index.html</button><button class="btn btn-sec" data-accion="lineas">Asignar líneas</button><button class="btn btn-sec" data-accion="cuartiles">Completar cuartiles</button><button class="btn btn-sec" data-accion="exportar">Descargar Excel</button><button class="btn btn-sec" data-accion="respaldo" title="Descarga el index.html con las publicaciones actuales como copia de respaldo">Actualizar copia de respaldo</button>${s.hoja ? `<a class="btn btn-aqua" href="${esc(s.hoja)}" target="_blank" rel="noopener">Abrir Google Sheets</a>` : ''}<button class="btn btn-sec" data-accion="clave">Cambiar clave</button><button class="btn btn-sec" data-accion="salir">Cerrar sesión</button></div>`
     : `<div class="gestion-tit">Configuración inicial<small>Conecte el repositorio a Google Sheets para publicar sin descargar archivos.</small></div>
 <div class="gestion-btns"><button class="btn btn-aqua" data-accion="conectar">Conectar con Google Sheets</button><button class="btn btn-sec" data-accion="salir">Salir</button></div>`;
 }
@@ -1316,6 +1316,7 @@ function enlazar() {
       buscarEnlace: () => buscarEnlace(t),
       usarDoi: () => usarDoi(t),
       cuartiles: () => completarCuartiles(t),
+      respaldo: () => { descargar('index.html', documento(publicos, CONFIG), 'text/html;charset=utf-8'); aviso('Se descargó index.html con ' + publicos.length + ' publicaciones. Súbalo a GitHub para actualizar la copia de respaldo.', 'ok'); },
       lineas: () => dialogoLineas(false),
       lineasTodas: () => dialogoLineas(true),
       guardarLineas: () => guardarLineas(t),
