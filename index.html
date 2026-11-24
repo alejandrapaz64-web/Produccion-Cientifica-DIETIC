@@ -142,7 +142,7 @@ dialog::backdrop{background:rgba(0,30,55,.55)}
 .previa input{width:18px;height:18px;margin-top:3px}
 .previa strong{display:block;font-weight:500;font-size:14px;line-height:1.4;color:var(--azul)}
 .previa small{color:var(--texto2);font-size:12.5px}
-.dup{display:inline-block;margin-top:4px;font-size:11px;font-weight:600;color:var(--rojo)}
+.unif{margin:14px 0 4px;padding:10px 12px;background:var(--azul-light);border-radius:10px;font-size:13px}.unif ul{margin:6px 0 0 20px;max-height:150px;overflow:auto;font-size:12.5px}.unif label{cursor:pointer}.dup{display:inline-block;margin-top:4px;font-size:11px;font-weight:600;color:var(--rojo)}
 .pasos{counter-reset:p;list-style:none;display:grid;gap:10px;font-size:14px;color:var(--texto2)}
 .pasos li{counter-increment:p;display:grid;grid-template-columns:28px 1fr;gap:10px;align-items:start}
 .pasos li::before{content:counter(p);width:26px;height:26px;border-radius:50%;background:var(--azul-light);color:var(--azul);font-weight:600;font-size:13px;display:flex;align-items:center;justify-content:center}
@@ -403,7 +403,7 @@ function campo(k, label, a, o = {}) {
   return `<div class="campo${o.ancho ? ' ancho' : ''}"><label for="c_${k}">${label}${o.req ? ' <span class="req">*</span>' : ''}</label>${control}${o.ayuda ? `<span class="ayuda">${o.ayuda}</span>` : ''}</div>`;
 }
 
-async function consultarDoi(doi) {
+async function consultarDoi(doi, sinSjr) {
   const r = await fetch('https://api.crossref.org/works/' + encodeURIComponent(doi).replace(/%2F/gi, '/'));
   if (!r.ok) throw new Error('no encontrado');
   const m = (await r.json()).message;
@@ -422,7 +422,7 @@ async function consultarDoi(doi) {
     resumen: sinEtiquetas(m.abstract).replace(/^(Abstract|Resumen)\s*/i, ''),
     palabras: (m.subject || []).join('; ')
   });
-  if (issn && API) {
+  if (issn && API && !sinSjr) {
     try {
       const q = await api({ action: 'cuartil', issn });
       if (q.ok && q.cuartil) a.cuartil = q.cuartil;
@@ -454,17 +454,27 @@ const duplicado = (a, lista, id) => lista.find(x => x.id !== id && ((a.doi && x.
 
 function dialogoDois() {
   abrir(`${cabecera('Agregar por DOI', 'Título, autores, año, revista y resumen se completan automáticamente.')}
-<div class="dlg-cuerpo"><div class="campo" style="margin-bottom:14px"><label for="loteProg">Programa doctoral de estas publicaciones <span class="req">*</span></label><select id="loteProg"><option value="">Seleccione…</option>${PROGRAMAS.map(p => `<option>${p}</option>`).join('')}</select></div><div class="campo" style="margin-bottom:14px"><label for="loteLinea">Línea de investigación</label><select id="loteLinea">${opcionesLinea('').map(x => `<option value="${esc(x[0])}">${esc(x[0] ? x[1] : 'Asignar después')}</option>`).join('')}</select></div><div class="campo" style="margin-bottom:14px"><label for="loteCohorte">Cohorte del estudiante autor</label><input id="loteCohorte" placeholder="2022-1" autocomplete="off"><span class="ayuda">Opcional. Formato año-periodo, por ejemplo 2022-1.</span></div><div class="campo"><label for="txtDois">DOI de las publicaciones</label><textarea id="txtDois" class="txt-grande" placeholder="10.3916/C78-2024-01&#10;https://doi.org/10.5294/edu.2023.26.1.4&#10;..."></textarea><span class="ayuda">Pegue uno por línea. Puede pegar los 46 de una vez, con o sin «https://doi.org/».</span></div><p class="progreso" id="progreso" aria-live="polite"></p></div>
+<div class="dlg-cuerpo"><div class="campo" style="margin-bottom:14px"><label for="loteProg">Programa doctoral de estas publicaciones <span class="req">*</span></label><select id="loteProg"><option value="">Seleccione…</option>${PROGRAMAS.map(p => `<option>${p}</option>`).join('')}</select></div><div class="campo" style="margin-bottom:14px"><label for="loteLinea">Línea de investigación</label><select id="loteLinea">${opcionesLinea('').map(x => `<option value="${esc(x[0])}">${esc(x[0] ? x[1] : 'Asignar después')}</option>`).join('')}</select></div><div class="campo" style="margin-bottom:14px"><label for="loteCohorte">Cohorte del estudiante autor</label><input id="loteCohorte" placeholder="2022-1" autocomplete="off"><span class="ayuda">Opcional. Formato año-periodo, por ejemplo 2022-1.</span></div><div class="campo"><label for="txtDois">DOI de las publicaciones</label><textarea id="txtDois" class="txt-grande" placeholder="10.3916/C78-2024-01&#10;https://doi.org/10.5294/edu.2023.26.1.4&#10;..."></textarea><span class="ayuda">Pegue uno por línea, con o sin «https://doi.org/». Opcional: después del DOI escriba el cuartil y el año de su documento (por ejemplo «10.3390/app15179352 Q1 2025»); así se usan esos valores en lugar de los de SCImago y Crossref.</span></div><p class="progreso" id="progreso" aria-live="polite"></p></div>
 <div class="dlg-pie"><button class="btn btn-sec" data-cerrar>Cancelar</button><button class="btn" id="btnBuscar" data-accion="buscarDois">Buscar publicaciones</button></div>`);
 }
 
 async function buscarDois() {
-  const dois = unicos(($('txtDois').value.match(/10\.\d{4,9}\/[^\s,;"<>]+/g) || []).map(d => d.replace(/[.)\]]+$/, '')));
+  const extra = {};
+  const dois = unicos($('txtDois').value.split(/\r?\n/).flatMap(l => {
+    const enc = (l.match(/10\.\d{4,9}\/[^\s,;"<>]+/g) || []).map(d => d.replace(/[.)\]]+$/, ''));
+    if (enc.length === 1) {
+      const resto = l.slice(l.indexOf(enc[0]) + enc[0].length);
+      const q = (resto.match(/\bQ\s*([1-4])\b/i) || [])[1];
+      const anio = (resto.match(/\b(?:19|20)\d{2}\b/) || [])[0] || '';
+      extra[enc[0].toLowerCase()] = { cuartil: q ? 'Q' + q : (/sin\s*(cuartil|indexaci)/i.test(resto) ? 'Sin cuartil' : ''), anio };
+    }
+    return enc;
+  }));
   const prog = $('loteProg').value;
   if (!prog) return aviso('Seleccione el programa doctoral', 'error');
   const coh = cohorteLote();
   if (coh === null) return;
-  const lin = ($('loteLinea') || {}).value || '';
+  const lin = prog === PROGRAMAS[1] ? '' : (($('loteLinea') || {}).value || '');
   if (!dois.length) return aviso('No se encontraron DOI válidos en el texto', 'error');
   $('btnBuscar').disabled = true;
   $('txtDois').disabled = true;
@@ -473,7 +483,14 @@ async function buscarDois() {
   async function trabajador() {
     while (i < dois.length) {
       const d = dois[i++];
-      try { const a = await consultarDoi(d); a.programa = prog; if (coh) a.cohorte = coh; if (lin) a.linea = lin; res.push(a); } catch (e) { fallidos.push(d); }
+      try {
+        const ex = extra[d.toLowerCase()] || {};
+        const a = await consultarDoi(d, !!ex.cuartil);
+        a.programa = prog; if (coh) a.cohorte = coh; if (lin) a.linea = lin;
+        if (ex.cuartil) a.cuartil = ex.cuartil;
+        if (ex.anio && ex.anio !== a.anio) { a._anioCrossref = a.anio; a.anio = ex.anio; }
+        res.push(a);
+      } catch (e) { fallidos.push(d); }
       hechos++;
       $('progreso').textContent = `Consultando ${hechos} de ${dois.length}…`;
     }
@@ -489,6 +506,15 @@ async function buscarDois() {
   }
   vistaPrevia(res, fallidos.length ? `No se encontraron ${fallidos.length}: ${fallidos.join(', ')}. Agréguelas manualmente.` : '');
 }
+
+function lineaSegunPrograma() {
+  const sel = $('loteProg'), lin = $('loteLinea');
+  if (!sel || !lin) return;
+  const sinLinea = sel.value === PROGRAMAS[1];
+  lin.closest('.campo').hidden = sinLinea;
+  if (sinLinea) lin.value = '';
+}
+document.addEventListener('change', e => { if (e.target && e.target.id === 'loteProg') lineaSegunPrograma(); });
 
 function cohorteLote() {
   const v = normalizar({ cohorte: ($('loteCohorte') || {}).value || '' }).cohorte;
@@ -522,7 +548,8 @@ function leerExcel() {
     const a = normalizar(o);
     if (!a.programa) a.programa = $('loteProg').value;
     if (!a.cohorte && coh) a.cohorte = coh;
-    if (!a.linea && $('loteLinea').value) a.linea = $('loteLinea').value;
+    if (!a.linea && $('loteLinea').value && a.programa !== PROGRAMAS[1]) a.linea = $('loteLinea').value;
+    if (a.programa === PROGRAMAS[1]) a.linea = '';
     if (a.titulo) res.push(a);
   });
   if (!res.length) return aviso('No se reconocieron filas. Copie también la fila de encabezados.', 'error');
@@ -865,7 +892,7 @@ ${campo('palabras', 'Palabras clave', a, { ancho: 1, ayuda: 'Separadas por punto
 ${campo('url', 'Enlace al artículo', a, { ph: 'https://' })}
 ${campo('intellectum', 'Enlace en Intellectum', a, { ph: 'https://intellectum.unisabana.edu.co/' })}
 ${campo('resumen', 'Resumen', a, { area: 1, ancho: 1, ayuda: 'Máximo 1.000 caracteres' })}
-<input type="hidden" name="issn" value="${esc(a.issn || '')}">
+${campo('issn', 'ISSN', a, { ph: '0000-0000', ayuda: 'Con el ISSN se busca el cuartil en SCImago al guardar.' })}
 <datalist id="dlLineas">${unicos(datos.map(x => x.linea)).sort(es).map(l => `<option value="${esc(l)}">`).join('')}</datalist>
 </div>
 <div class="dlg-pie"><button type="button" class="btn btn-sec" data-cerrar>Cancelar</button><button type="submit" class="btn" id="btnGuardar">${id ? 'Guardar cambios' : 'Guardar publicación'}</button></div>
@@ -899,9 +926,56 @@ async function guardarFormulario(f) {
   }
 }
 
+const PARTICULAS_NOMBRE = ['de', 'del', 'la', 'las', 'los', 'y', 'da', 'das', 'do', 'dos', 'van', 'von', 'di'];
+function nombreApellidoPrimero(n) {
+  n = String(n || '').replace(/\s+/g, ' ').trim();
+  if (!n || n.includes(',')) return n;
+  const p = [];
+  let pend = '';
+  n.split(' ').forEach(w => {
+    if (PARTICULAS_NOMBRE.includes(w.toLowerCase())) pend += (pend ? ' ' : '') + w;
+    else { p.push(pend ? pend + ' ' + w : w); pend = ''; }
+  });
+  if (pend) p.push(pend);
+  if (p.length < 2) return n;
+  if (p.length === 2) return p[1] + ', ' + p[0];
+  if (p.length === 3) return p[1] + ' ' + p[2] + ', ' + p[0];
+  return p.slice(-2).join(' ') + ', ' + p.slice(0, -2).join(' ');
+}
+
+function deMetadatos(m, url) {
+  const aut = (m.autores || []).map(nombreApellidoPrimero).filter(Boolean);
+  return normalizar({
+    titulo: m.titulo, autores: unicos(aut).join('; '), anio: m.anio, revista: m.revista, doi: m.doi,
+    url, issn: m.issn, resumen: sinEtiquetas(m.resumen || '').slice(0, 1000), palabras: m.palabras, tipo: 'Artículo'
+  });
+}
+
+function deCita(txt) {
+  const t = String(txt).replace(/\s+/g, ' ').trim();
+  const m = t.match(/^(.*?)\s*\(\s*(\d{4})[a-z]?(?:,[^)]*)?\)\s*\.?\s*(.*)$/);
+  if (!m) return {};
+  const toks = m[1].replace(/\s*(?:&|\by\b|\band\b)\s*/g, ', ').split(/,\s*/).map(x => x.trim()).filter(Boolean);
+  const esIni = x => /^(?:[A-ZÁÉÍÓÚÑ][a-záéíóú]?\.?\s*-?\s*)+$/.test(x) && /[.]|^[A-ZÁÉÍÓÚÑ]{1,3}$/.test(x);
+  const aut = [];
+  for (let i = 0; i < toks.length; i++) {
+    if (toks[i + 1] && esIni(toks[i + 1])) { aut.push(toks[i] + ', ' + toks[i + 1]); i++; }
+    else aut.push(toks[i]);
+  }
+  const doi = ((t.match(/10\.\d{4,9}\/[^\s"<>]+/) || [''])[0]).replace(/[.,)\]]+$/, '');
+  const resto = m[3].replace(/\s*(?:https?:\/\/\S+|doi:\s*\S+)\s*$/i, '').trim();
+  const tm = resto.match(/^(.+?[.?!])\s+(?=[A-ZÁÉÍÓÚÑ¿¡])(.*)$/);
+  const titulo = (tm ? tm[1] : resto).replace(/\.$/, '').trim();
+  const rv = tm ? tm[2] : '';
+  const rm = rv.match(/^(.*?)(?:,\s*\d|\.\s*\d|,\s*e\d|,\s*\(|\.\s*https?|\.\s*doi|\s*$)/i);
+  const revista = (rm ? rm[1] : rv).replace(/[.,\s]+$/, '').trim();
+  const url = ((t.match(/https?:\/\/(?!(?:dx\.)?doi\.org)\S+/) || [''])[0]).replace(/[.,)]+$/, '');
+  return normalizar({ titulo, autores: aut.join('; '), anio: m[2], revista, doi, url: url || (doi ? 'https://doi.org/' + doi : ''), tipo: 'Artículo' });
+}
+
 function dialogoEnlace() {
-  abrir(`<form id="frmEnlace" novalidate>${cabecera('Agregar por enlace o título', 'Funciona con enlaces de revistas, ScienceDirect, Elsevier, DOI o el título del artículo.')}
-<div class="dlg-cuerpo"><div class="campo"><label for="txtEnlace">Enlace, DOI o título</label><input id="txtEnlace" name="enlace" placeholder="https://authors.elsevier.com/sd/article/S2590-2911(26)…" autocomplete="off"><span class="ayuda">Si el enlace no trae la información, se buscará por título.</span></div>
+  abrir(`<form id="frmEnlace" novalidate>${cabecera('Agregar por enlace, DOI, título o cita', 'Sirve también para artículos recién publicados cuyo DOI aún no está activo.')}
+<div class="dlg-cuerpo"><div class="campo"><label for="txtEnlace">Enlace del artículo, DOI, título o cita APA</label><textarea id="txtEnlace" name="enlace" rows="3" placeholder="https://revistas.uptc.edu.co/index.php/praxis_saber/article/view/21408" autocomplete="off"></textarea><span class="ayuda">Con el enlace de la revista se leen los datos de la página. Si la revista no lo permite, copie la cita APA del artículo (suele estar en «Cómo citar») y péguela aquí.</span></div>
 <p class="progreso" id="progEnlace" aria-live="polite"></p><div id="resEnlace"></div></div>
 <div class="dlg-pie"><button type="button" class="btn btn-sec" data-cerrar>Cancelar</button><button type="submit" class="btn" id="btnEnlace">Buscar</button></div></form>`);
   setTimeout(() => { const i = $('txtEnlace'); if (i) i.focus(); }, 50);
@@ -924,31 +998,54 @@ async function usarDoi(btn) {
 }
 
 async function buscarEnlace() {
-  const txt = decodeURIComponent(($('txtEnlace').value || '').trim());
+  const crudo = ($('txtEnlace').value || '').trim();
+  let txt = crudo;
+  try { txt = decodeURIComponent(crudo); } catch (e) {}
   const prog = t => { $('progEnlace').style.color = ''; $('progEnlace').textContent = t; };
   const error = t => { $('progEnlace').style.color = 'var(--rojo)'; $('progEnlace').textContent = t; };
-  if (!txt) return error('Pegue un enlace, un DOI o el título.');
+  if (!txt) return error('Pegue un enlace, un DOI, el título o la cita APA.');
   const b = $('btnEnlace');
   b.disabled = true;
   $('resEnlace').innerHTML = '';
+  const abrirCon = pre => formulario('', unificarAutores([pre], datos).lista[0]);
   try {
+    const esUrl = /^https?:\/\/\S+$/i.test(txt);
+    const esCita = !esUrl && txt.length > 40 && /\(\s*\d{4}[a-z]?(?:,[^)]*)?\)\s*\.?/.test(txt);
+    if (esCita) {
+      prog('Leyendo la cita…');
+      const c = deCita(txt);
+      if (c.doi) { try { return abrirCon(await consultarDoi(c.doi)); } catch (e) {} }
+      if (!c.titulo || !c.autores || !c.anio) { b.disabled = false; return error('No pude leer la cita. Verifique que esté en formato APA: Autores (Año). Título. Revista, volumen(número), páginas. DOI'); }
+      return abrirCon(c);
+    }
     const doi = (txt.match(/10\.\d{4,9}\/[^\s?#"<>]+/) || [])[0];
     if (doi) {
       prog('Consultando el DOI…');
-      return formulario('', await consultarDoi(doi.replace(/[.)\]]+$/, '')));
+      try { return abrirCon(await consultarDoi(doi.replace(/[.)\]]+$/, ''))); }
+      catch (e) {
+        if (!esUrl || /doi\.org\//i.test(txt)) { b.disabled = false; return error('Ese DOI todavía no está activo en Crossref (pasa con artículos recién publicados). Pegue el enlace del artículo en la revista o su cita APA.'); }
+      }
     }
     const pii = (txt.match(PII) || [])[0];
     if (pii) {
       prog('Identificando el artículo de Elsevier…');
       const id = pii.replace(/[^\dSX]/gi, '').toUpperCase();
       const items = await crossref({ filter: 'alternative-id:' + id, rows: 1 });
-      if (items.length && items[0].DOI) return formulario('', await consultarDoi(items[0].DOI));
-      b.disabled = false;
-      return error('El artículo aún no aparece indexado en Crossref (suele pasar con artículos muy recientes). Escriba el título en este mismo campo y vuelva a buscar.');
+      if (items.length && items[0].DOI) return abrirCon(await consultarDoi(items[0].DOI));
     }
-    if (/^https?:\/\//i.test(txt)) {
-      b.disabled = false;
-      return error('Ese enlace no contiene un DOI. Escriba el título del artículo en este mismo campo y vuelva a buscar.');
+    if (esUrl) {
+      prog('Leyendo los datos de la página del artículo…');
+      try {
+        const r = await llamar({ action: 'metadatos', url: txt });
+        return abrirCon(deMetadatos(r.meta || {}, txt));
+      } catch (e) {
+        if (!sesion()) return;
+        b.disabled = false;
+        const falta = /acci[oó]n no v[aá]lida/i.test(e.message || '');
+        return error(falta
+          ? 'Falta actualizar el Apps Script del repositorio para leer enlaces. Mientras tanto, copie la cita APA del artículo y péguela aquí.'
+          : 'No fue posible leer la página: ' + String(e.message || 'sin respuesta').replace(/\.$/, '') + '. Copie la cita APA del artículo (suele estar en «Cómo citar») y péguela aquí.');
+      }
     }
     if (txt.length < 15) { b.disabled = false; return error('Escriba el título completo o una parte amplia de él.'); }
     prog('Buscando por título…');
@@ -1057,13 +1154,68 @@ async function eliminar(id, btn) {
   }
 }
 
+const PARTICULAS = ['de', 'del', 'la', 'las', 'los', 'y', 'da', 'das', 'do', 'dos', 'van', 'von', 'i'];
+function tokensNombre(n) {
+  const t = s => norm(s).replace(/[^a-z\s-]/g, ' ').split(/[\s-]+/).filter(w => w && !PARTICULAS.includes(w));
+  const [fam, ...giv] = String(n).split(',');
+  const todos = [...t(fam), ...t(giv.join(' '))];
+  return { full: todos.filter(w => w.length > 1), ini: todos.filter(w => w.length === 1) };
+}
+function contieneNombre(a, b) {
+  const pool = [...b.full];
+  for (const w of a.full) { const k = pool.indexOf(w); if (k < 0) return false; pool.splice(k, 1); }
+  const letras = [...pool.map(w => w[0]), ...b.ini];
+  for (const c of a.ini) { const k = letras.indexOf(c); if (k < 0) return false; letras.splice(k, 1); }
+  return true;
+}
+function unificarAutores(lista, existentes) {
+  const cuenta = new Map();
+  [...existentes, ...lista].forEach(a => autoresDe(a).forEach(n => cuenta.set(n, (cuenta.get(n) || 0) + 1)));
+  const tk = new Map([...cuenta.keys()].map(n => [n, tokensNombre(n)]));
+  const nombres = [...cuenta.keys()].filter(n => { const t = tk.get(n); return t.full.length >= 1 && t.full.length + t.ini.length >= 2; });
+  const dentro = (x, y) => contieneNombre(tk.get(x), tk.get(y));
+  const iguales = (x, y) => dentro(x, y) && dentro(y, x);
+  const maximos = nombres.filter(n => !nombres.some(m => m !== n && dentro(n, m) && !dentro(m, n)));
+  const claseDe = new Map();
+  maximos.forEach(m => { if (!claseDe.has(m)) { const c = maximos.filter(x => iguales(x, m)); c.forEach(x => claseDe.set(x, c[0])); } });
+  const grupos = new Map();
+  nombres.forEach(n => {
+    const clases = unicos(maximos.filter(m => m === n || dentro(n, m)).map(m => claseDe.get(m)));
+    if (clases.length !== 1) return;
+    if (!grupos.has(clases[0])) grupos.set(clases[0], []);
+    grupos.get(clases[0]).push(n);
+  });
+  const nFam = n => tokensNombre(String(n).split(',')[0]).full.length;
+  const acentos = n => (String(n).match(/[^\x00-\x7F]/g) || []).length;
+  const canon = new Map();
+  grupos.forEach(miembros => {
+    if (miembros.length < 2) return;
+    const total = n => tk.get(n).full.length + tk.get(n).ini.length;
+    let rep = [...miembros].sort((x, y) => tk.get(x).ini.length - tk.get(y).ini.length || cuenta.get(y) - cuenta.get(x) || nFam(y) - nFam(x) || tk.get(y).full.length - tk.get(x).full.length || total(y) - total(x) || acentos(y) - acentos(x))[0];
+    const conTilde = {};
+    miembros.forEach(m => String(m).split(/[\s,;-]+/).forEach(w => { const k = norm(w); if (k && acentos(w) > acentos(conTilde[k] || '')) conTilde[k] = w; }));
+    rep = rep.replace(/[^\s,;-]+/g, w => conTilde[norm(w)] || w);
+    miembros.forEach(m => { if (m !== rep) canon.set(m, rep); });
+  });
+  const cambios = new Map();
+  const res = lista.map(a => {
+    const orig = autoresDe(a);
+    const nuevos = unicos(orig.map(n => { const c = canon.get(n); if (c) cambios.set(n, c); return c || n; }));
+    return nuevos.join('; ') === orig.join('; ') ? a : { ...a, _autoresOrig: a.autores, autores: nuevos.join('; ') };
+  });
+  return { lista: res, cambios: [...cambios.entries()] };
+}
+
 function vistaPrevia(lista, nota) {
+  const uni = unificarAutores(lista, datos);
+  lista = uni.lista;
   pendientes = lista.map(a => ({ ...a, _dup: !!duplicado(a, datos) }));
   pendientes.forEach((a, i) => { if (!a._dup && pendientes.slice(0, i).some(b => norm(b.titulo) === norm(a.titulo))) a._dup = true; });
   const nuevas = pendientes.filter(a => !a._dup).length;
   abrir(`${cabecera('Revise las publicaciones', `${pendientes.length} encontradas. Desmarque las que no quiera agregar.`)}
-<div class="dlg-cuerpo">${nota ? `<p class="progreso" style="margin:0 0 12px;color:var(--rojo)">${esc(nota)}</p>` : ''}<ul class="previa">${pendientes.map((a, i) => `<li><input type="checkbox" id="p${i}" data-pend="${i}"${a._dup ? '' : ' checked'}><label for="p${i}"><strong>${esc(a.titulo)}</strong><small>${esc(CORTO[a.programa] || 'Sin programa')}${a.cohorte ? ' · Cohorte ' + esc(a.cohorte) : ''} · ${esc(a.autores || 'Sin autores')} (${esc(a.anio || 'sin año')}). ${esc(a.revista)}${a.cuartil ? ' · ' + esc(a.cuartil) : ''}</small>${a._dup ? '<br><span class="dup">Ya está en el repositorio</span>' : ''}${!a.anio || !a.autores ? '<br><span class="dup">Faltan autores o año: no se podrá guardar</span>' : ''}</label></li>`).join('')}</ul>
-<p class="progreso" id="progAgregar">El cuartil se tomó de SCImago cuando la revista está indexada. Puede ajustar cuartil, cohorte y línea con «Editar».</p></div>
+<div class="dlg-cuerpo">${nota ? `<p class="progreso" style="margin:0 0 12px;color:var(--rojo)">${esc(nota)}</p>` : ''}<ul class="previa">${pendientes.map((a, i) => `<li><input type="checkbox" id="p${i}" data-pend="${i}"${a._dup ? '' : ' checked'}><label for="p${i}"><strong>${esc(a.titulo)}</strong><small>${esc(CORTO[a.programa] || 'Sin programa')}${a.cohorte ? ' · Cohorte ' + esc(a.cohorte) : ''} · ${esc(a.autores || 'Sin autores')} (${esc(a.anio || 'sin año')}). ${esc(a.revista)}${a.cuartil ? ' · ' + esc(a.cuartil) : ''}${a._anioCrossref ? ' · Año de su documento (Crossref: ' + esc(a._anioCrossref) + ')' : ''}</small>${a._dup ? '<br><span class="dup">Ya está en el repositorio</span>' : ''}${!a.anio || !a.autores ? '<br><span class="dup">Faltan autores o año: no se podrá guardar</span>' : ''}</label></li>`).join('')}</ul>
+${uni.cambios.length ? `<div class="unif"><label><input type="checkbox" id="chkUnif" checked> <strong>Unificar ${uni.cambios.length} nombre(s) de autor</strong> con la forma que ya usa el repositorio</label><ul>${uni.cambios.map(([d, h]) => `<li>${esc(d)} → <strong>${esc(h)}</strong></li>`).join('')}</ul></div>` : ''}
+<p class="progreso" id="progAgregar">Si escribió el cuartil junto al DOI, se usa el suyo; si no, el de SCImago cuando la revista está indexada. Puede ajustar cuartil, cohorte y línea con «Editar».</p></div>
 <div class="dlg-pie"><button class="btn btn-sec" data-cerrar>Cancelar</button><button class="btn" id="btnAgregar" data-accion="agregar">Agregar ${nuevas} publicaciones</button></div>`);
 }
 
@@ -1076,7 +1228,9 @@ async function agregarPendientes() {
   for (let i = 0; i < marcadas.length; i++) {
     $('progAgregar').textContent = `Guardando ${i + 1} de ${marcadas.length} en Google Sheets…`;
     try {
-      const m = await asegurarCuartil(marcadas[i]);
+      const unif = !$('chkUnif') || $('chkUnif').checked;
+      const base = unif || !marcadas[i]._autoresOrig ? marcadas[i] : { ...marcadas[i], autores: marcadas[i]._autoresOrig };
+      const m = await asegurarCuartil(base);
       await llamar({ action: 'guardar', ...campos(m), resumen: (m.resumen || '').slice(0, 1000), fecha: m.fecha || '' });
       ok++;
     } catch (e) {
