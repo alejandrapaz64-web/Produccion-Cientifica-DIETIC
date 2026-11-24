@@ -102,7 +102,7 @@ main{max-width:1200px;margin:0 auto;padding:22px 48px 64px}
 .item-linea{display:inline-block;font-size:11px;font-weight:500;color:var(--aqua);background:var(--aqua-light);border-radius:20px;padding:2px 10px;margin-bottom:8px}
 .item h3{font-family:'Playfair Display',Georgia,serif;font-weight:500;font-size:19px;line-height:1.35;color:var(--azul);margin-bottom:6px;max-width:75ch}
 .item-titulo,.autor{all:unset;cursor:pointer}
-.item-titulo:hover{color:var(--azul3)}
+.item-titulo:hover{color:var(--azul3);text-decoration:underline;text-underline-offset:3px}
 .item-autores{font-size:14px;color:var(--texto2);margin-bottom:5px}
 .autor:hover{color:var(--azul3);text-decoration:underline}
 .item-titulo:focus-visible,.autor:focus-visible{outline:3px solid #7fb0e0;outline-offset:2px}
@@ -160,13 +160,24 @@ footer{background:var(--azul);padding:24px 48px}
 @media(max-width:680px){.hero-top{flex-wrap:wrap;row-gap:12px}.hero-sep{display:none}.filtros{position:static}.item{grid-template-columns:1fr;gap:4px;padding:18px}.item-anio{font-size:18px}.item-admin{margin-left:0}.form{grid-template-columns:1fr}.det dl{grid-template-columns:1fr;gap:0}.det dd{margin-bottom:10px}.footer-inner{flex-direction:column;align-items:flex-start}.dlg-cab{padding:20px 56px 18px 20px}.dlg-cuerpo{padding:18px 20px}.dlg-pie{padding:12px 20px 20px}.dlg-pie .btn{flex:1}.doi-fila{flex-direction:column}}
 @media(max-width:480px){.hero-inner,main,footer,.gestion{padding-left:16px;padding-right:16px}.filtros-in{padding-left:16px;padding-right:16px}.logo-wrap{padding:7px 12px}.logo-wrap img{height:34px}.hero-org-title{font-size:11px}.hero-org-name{font-size:13px}.hero-title{font-size:26px}.hero-sub{font-size:14px}.hero-kpis{width:100%;display:grid;grid-template-columns:repeat(3,1fr);gap:8px}.kpi-chip{min-width:0;padding:8px 4px}.kpi-chip strong{font-size:18px}.kpi-chip span{font-size:10px}}
 @media(prefers-reduced-motion:reduce){*{transition:none!important;scroll-behavior:auto!important}}
-.programas{display:inline-flex;flex-wrap:wrap;gap:4px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.16);border-radius:12px;padding:4px;margin-top:24px}
-.programas button{border:0;background:transparent;color:rgba(255,255,255,.82);font:inherit;font-size:13px;font-weight:500;padding:8px 15px;border-radius:9px;cursor:pointer}
-.programas button:hover{color:#fff;background:rgba(255,255,255,.08)}
-.programas button[aria-pressed="true"]{background:#fff;color:var(--azul)}
+.programas{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin-top:28px;max-width:880px}
+.programas button{position:relative;overflow:hidden;text-align:left;display:flex;flex-direction:column;justify-content:flex-start;border:1px solid rgba(255,255,255,.16);background:rgba(255,255,255,.06);color:#fff;font:inherit;border-radius:14px;padding:16px 20px 15px;cursor:pointer;opacity:0;transform:translateY(16px);animation:subir .7s cubic-bezier(.2,.7,.2,1) forwards;transition:background .25s,border-color .25s,color .25s}
+.programas button:nth-child(2){animation-delay:.12s}.programas button:nth-child(3){animation-delay:.24s}
+.programas button::after{content:'';position:absolute;left:20px;right:20px;bottom:0;height:3px;border-radius:3px 3px 0 0;background:linear-gradient(90deg,var(--azul3),var(--aqua));transform:scaleX(0);transform-origin:left;transition:transform .45s ease}
+.programas button:hover{background:rgba(255,255,255,.12);border-color:rgba(255,255,255,.3)}
+.programas button:hover::after{transform:scaleX(.35)}
+.programas button[aria-pressed="true"]{background:#fff;color:var(--azul);border-color:#fff}
+.programas button[aria-pressed="true"]::after{transform:scaleX(1)}
+.programas button:focus-visible{outline:3px solid #7fb0e0;outline-offset:2px}
+.prog-cifra{display:flex;align-items:baseline;gap:8px}
+.prog-n{font-family:'Playfair Display',Georgia,serif;font-style:italic;font-size:46px;font-weight:500;line-height:1;font-variant-numeric:tabular-nums}
+.prog-u{font-size:12px;opacity:.65}
+.prog-etq{display:block;margin-top:10px;font-size:12.5px;font-weight:600;letter-spacing:.07em;text-transform:uppercase;opacity:.9}
+@keyframes subir{to{opacity:1;transform:none}}
+@media(max-width:680px){.programas{gap:8px}.programas button{padding:12px 12px 11px;border-radius:12px}.prog-n{font-size:30px}.prog-u{display:none}.prog-etq{font-size:10.5px;letter-spacing:.04em;margin-top:6px}}
+@media(prefers-reduced-motion:reduce){.programas button{animation:none;opacity:1;transform:none}}
 .programas+.buscador{margin-top:14px}
 .item-prog{display:inline-block;font-size:11px;font-weight:600;color:var(--azul2);background:var(--azul-light);border-radius:20px;padding:2px 10px;margin:0 6px 8px 0}
-@media(max-width:680px){.programas{display:flex;width:100%}.programas button{flex:1;padding:8px 6px;font-size:12px}}
 .item-coh{display:inline-block;font-size:11px;font-weight:600;color:var(--texto2);background:var(--gris2);border-radius:20px;padding:2px 10px;margin:0 6px 8px 0}
 .previa select{border:1px solid var(--gris2);border-radius:8px;padding:8px 10px;background:#fff;width:100%;font-size:13px}
 </style>
@@ -205,7 +216,7 @@ const unicos = arr => [...new Set(arr.filter(Boolean))];
 
 const autoresDe = a => String(a.autores || '').split(';').map(s => s.trim()).filter(Boolean);
 
-const enlace = a => seguro(a.doi ? 'https://doi.org/' + a.doi : a.url);
+const enlace = a => { const u = seguro(a.url); return u && !/\/\/(dx\.)?doi\.org\//i.test(u) ? u : seguro(a.doi ? 'https://doi.org/' + a.doi : u); };
 
 const limpiaDoi = d => String(d || '').trim().replace(/^https?:\/\/(dx\.)?doi\.org\//i, '').replace(/^doi:\s*/i, '');
 
@@ -252,6 +263,7 @@ function normalizar(o) {
   a.cuartil = q || '';
   a.programa = programaDe(a.programa);
   a.linea = lineaDe(a.linea);
+  if (/\(\s*\d{4}[a-z]?\s*\)/.test(a.autores)) { const c = deCita(a.autores); if (c.autores) a.autores = c.autores; }
   const co = a.cohorte.replace(/\s/g, '').match(/^(\d{4})[-\/._]?([12])$/);
   if (co) a.cohorte = co[1] + '-' + co[2];
   return a;
@@ -524,8 +536,8 @@ function cohorteLote() {
 
 function dialogoExcel() {
   abrir(`${cabecera('Pegar desde Excel', 'Copie las filas en Excel y péguelas aquí.')}
-<div class="dlg-cuerpo"><ol class="pasos"><li>Use la plantilla de carga o el Excel descargado del repositorio.</li><li>Llene una fila por publicación. Título, autores y año son obligatorios.</li><li>Seleccione desde la fila de encabezados hasta la última publicación, copie y pegue abajo.</li></ol>
-<p style="margin:14px 0"><button class="btn btn-sec" data-accion="plantilla">Descargar plantilla</button></p>
+<div class="dlg-cuerpo"><ol class="pasos"><li>Descargue la plantilla en Excel y llene la hoja «Publicaciones», una fila por publicación. Título, autores, año y programa son obligatorios.</li><li>Seleccione desde la fila de encabezados hasta la última publicación, copie y pegue abajo.</li></ol>
+<p style="margin:14px 0"><button class="btn btn-sec" data-accion="plantilla">Descargar plantilla en Excel</button></p>
 <div class="campo" style="margin-bottom:14px"><label for="loteProg">Programa doctoral de estas publicaciones <span class="req">*</span></label><select id="loteProg"><option value="">Seleccione…</option>${PROGRAMAS.map(p => `<option>${p}</option>`).join('')}</select></div><div class="campo" style="margin-bottom:14px"><label for="loteLinea">Línea de investigación</label><select id="loteLinea">${opcionesLinea('').map(x => `<option value="${esc(x[0])}">${esc(x[0] ? x[1] : 'Asignar después')}</option>`).join('')}</select></div><div class="campo" style="margin-bottom:14px"><label for="loteCohorte">Cohorte del estudiante autor</label><input id="loteCohorte" placeholder="2022-1" autocomplete="off"><span class="ayuda">Opcional. Formato año-periodo, por ejemplo 2022-1.</span></div><div class="campo"><label for="txtExcel">Filas copiadas de Excel</label><textarea id="txtExcel" class="txt-grande" placeholder="Pegue aquí las filas"></textarea></div></div>
 <div class="dlg-pie"><button class="btn btn-sec" data-cerrar>Cancelar</button><button class="btn" data-accion="leerExcel">Revisar publicaciones</button></div>`);
 }
@@ -568,6 +580,107 @@ function cargarSheetJS() {
     sc.onerror = () => mal(new Error('sin conexión'));
     document.head.appendChild(sc);
   });
+}
+
+function cargarScript(urls, listo) {
+  if (listo()) return Promise.resolve(listo());
+  return urls.reduce((pr, u) => pr.catch(() => new Promise((ok, mal) => {
+    const sc = document.createElement('script');
+    sc.src = u;
+    sc.onload = () => listo() ? ok(listo()) : mal(new Error('sin librería'));
+    sc.onerror = () => mal(new Error('sin conexión'));
+    document.head.appendChild(sc);
+  })), Promise.reject());
+}
+
+const GUIA_PLANTILLA = [
+  ['Título', 'Sí', 'Título completo, tal como aparece en la revista.', 'Agencia estudiantil y convivencia escolar: una revisión sistemática'],
+  ['Autores', 'Sí', 'Apellidos, Nombre o iniciales. Separe cada autor con punto y coma (;).', 'Ávila, D. J.; Fontán, L.'],
+  ['Año', 'Sí', 'Año de publicación, cuatro dígitos.', '2026'],
+  ['Tipo', 'No', 'Elija de la lista. Si queda vacío se guarda como Artículo.', 'Artículo'],
+  ['Revista', 'No', 'Nombre de la revista, libro o evento.', 'Praxis & Saber'],
+  ['Cuartil', 'No', 'Elija de la lista. Si lo deja vacío y hay ISSN o DOI, el sistema lo busca en SCImago.', 'Q2'],
+  ['Línea de investigación', 'No', 'Solo Doctorado en Educación. En DieTic déjela vacía.', 'Pedagogía e Infancia'],
+  ['Palabras clave', 'No', 'Separadas por punto y coma (;).', 'agencia estudiantil; convivencia escolar'],
+  ['DOI', 'No', 'Solo el código, sin «https://doi.org/».', '10.19053/uptc.22160159.v17.n49.2026.21408'],
+  ['URL', 'No', 'Enlace al artículo en la página de la revista. El título lleva a este enlace.', 'https://revistas.uptc.edu.co/index.php/praxis_saber/article/view/21408'],
+  ['Enlace Intellectum', 'No', 'Enlace en el repositorio institucional, si existe.', ''],
+  ['Resumen', 'No', 'Un solo párrafo, sin saltos de línea dentro de la celda.', ''],
+  ['Programa', 'Sí*', 'Elija de la lista. *Si lo deja vacío se usa el programa elegido al pegar.', 'Doctorado en Educación'],
+  ['Cohorte', 'No', 'Cohorte del estudiante autor, formato año-periodo.', '2023-2'],
+  ['ISSN', 'No', 'Formato 0000-0000. Sirve para buscar el cuartil.', '2216-0159']
+];
+
+async function descargarPlantilla() {
+  const nombre = 'Plantilla_Produccion_Cientifica_NEXO.xlsx';
+  let EJ;
+  try { EJ = await cargarScript(['https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.4.0/exceljs.min.js', 'https://cdn.jsdelivr.net/npm/exceljs@4.4.0/dist/exceljs.min.js'], () => window.ExcelJS); }
+  catch (e) {
+    try { const X = await cargarSheetJS(); const wb = X.utils.book_new(); X.utils.book_append_sheet(wb, X.utils.aoa_to_sheet([ENCABEZADOS]), 'Publicaciones'); X.utils.book_append_sheet(wb, X.utils.aoa_to_sheet([['Campo', 'Obligatorio', 'Qué escribir', 'Ejemplo'], ...GUIA_PLANTILLA]), 'Instrucciones'); X.writeFile(wb, nombre); }
+    catch (e2) { aviso('No fue posible generar la plantilla. Revise la conexión a internet.', 'error'); }
+    return;
+  }
+  const wb = new EJ.Workbook();
+  wb.creator = 'NEXO Doctoral · Universidad de La Sabana';
+  const AZUL = 'FF003865', AZUL_CL = 'FFE6EFF8', GRIS = 'FFF0F2F5', borde = { style: 'thin', color: { argb: 'FFD0D7DE' } };
+  const ws = wb.addWorksheet('Publicaciones', { views: [{ state: 'frozen', ySplit: 1 }], properties: { tabColor: { argb: AZUL } } });
+  const anchos = [60, 45, 8, 18, 36, 12, 34, 34, 34, 40, 30, 60, 42, 11, 12];
+  const oblig = ['Título', 'Autores', 'Año', 'Programa'];
+  ws.columns = ENCABEZADOS.map((h, i) => ({ header: h, key: 'c' + i, width: anchos[i], style: { numFmt: '@', alignment: { vertical: 'top', wrapText: true } } }));
+  const cab = ws.getRow(1);
+  cab.height = 30;
+  cab.eachCell((c, i) => {
+    const h = ENCABEZADOS[i - 1];
+    c.font = { bold: true, color: { argb: 'FFFFFFFF' }, name: 'Calibri', size: 11 };
+    c.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: oblig.includes(h) ? AZUL : 'FF1A7BC4' } };
+    c.alignment = { vertical: 'middle', horizontal: 'center', wrapText: true };
+    c.border = { bottom: borde };
+    const g = GUIA_PLANTILLA.find(x => x[0] === h);
+    if (g) c.note = (g[1] === 'No' ? 'Opcional. ' : 'Obligatorio. ') + g[2];
+  });
+  ws.autoFilter = { from: 'A1', to: { row: 1, column: ENCABEZADOS.length } };
+  const ls = wb.addWorksheet('Listas', { state: 'veryHidden' });
+  [['Tipo', TIPOS], ['Cuartil', ORDEN_Q], ['Línea', LINEAS], ['Programa', PROGRAMAS]].forEach(([t, v], j) => { ls.getCell(1, j + 1).value = t; v.forEach((x, k) => { ls.getCell(k + 2, j + 1).value = x; }); });
+  const col = h => ENCABEZADOS.indexOf(h) + 1;
+  const lista = (h, letra, n, msg) => ({ col: col(h), dv: { type: 'list', allowBlank: true, formulae: ['Listas!$' + letra + '$2:$' + letra + '$' + (n + 1)], showErrorMessage: true, errorStyle: 'stop', errorTitle: h, error: msg, showInputMessage: true, promptTitle: h, prompt: 'Elija una opción de la lista.' } });
+  const reglas = [
+    lista('Tipo', 'A', TIPOS.length, 'Elija un tipo de la lista.'),
+    lista('Cuartil', 'B', ORDEN_Q.length, 'Elija Q1, Q2, Q3, Q4 o Sin cuartil.'),
+    lista('Línea de investigación', 'C', LINEAS.length, 'Elija una línea de la lista. En DieTic déjela vacía.'),
+    lista('Programa', 'D', PROGRAMAS.length, 'Elija un programa de la lista.'),
+    { col: col('Año'), dv: { type: 'whole', operator: 'between', allowBlank: true, formulae: [1990, 2035], showErrorMessage: true, errorTitle: 'Año', error: 'Escriba el año con cuatro dígitos, por ejemplo 2025.' } },
+    { col: col('Cohorte'), dv: { type: 'textLength', operator: 'equal', allowBlank: true, formulae: [6], showErrorMessage: true, errorTitle: 'Cohorte', error: 'Formato año-periodo, por ejemplo 2023-2.' } }
+  ];
+  const letraCol = n => String.fromCharCode(64 + n);
+  reglas.forEach(x => ws.dataValidations.add(`${letraCol(x.col)}2:${letraCol(x.col)}501`, x.dv));
+  ws.getColumn(col('Año')).numFmt = '0';
+  const gi = wb.addWorksheet('Instrucciones', { properties: { tabColor: { argb: 'FF0E7C7B' } } });
+  gi.columns = [{ width: 24 }, { width: 13 }, { width: 70 }, { width: 62 }];
+  gi.mergeCells('A1:D1');
+  gi.getCell('A1').value = 'Plantilla de carga · Repositorio de Producción Científica';
+  gi.getCell('A1').font = { bold: true, size: 15, color: { argb: 'FFFFFFFF' } };
+  gi.getCell('A1').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: AZUL } };
+  gi.getRow(1).height = 30;
+  gi.getCell('A1').alignment = { vertical: 'middle', indent: 1 };
+  const pasos = ['Cómo usarla', '1. Llene la hoja «Publicaciones»: una fila por publicación, sin dejar filas vacías en medio.', '2. Las columnas azul oscuro son obligatorias (Título, Autores, Año y Programa). Las demás son opcionales.', '3. Tipo, Cuartil, Línea y Programa tienen lista desplegable. Para DieTic deje la Línea vacía.', '4. Seleccione desde la fila de encabezados hasta la última publicación y cópiela (Cmd + C).', '5. En el repositorio: Gestión › Pegar desde Excel › pegue en el cuadro › Revisar publicaciones › Guardar.', 'Consejo: si solo tiene DOI, use mejor «Agregar por DOI»; el sistema completa los demás datos solo.'];
+  pasos.forEach((t, i) => { const c = gi.getCell('A' + (i + 3)); gi.mergeCells(`A${i + 3}:D${i + 3}`); c.value = t; c.font = i ? { size: 11, color: { argb: 'FF0D1B2A' } } : { bold: true, size: 12, color: { argb: AZUL } }; c.alignment = { wrapText: true, vertical: 'middle' }; });
+  const ini = pasos.length + 4;
+  const h = gi.getRow(ini);
+  h.values = ['Campo', 'Obligatorio', 'Qué escribir', 'Ejemplo'];
+  h.eachCell(c => { c.font = { bold: true, color: { argb: 'FFFFFFFF' } }; c.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: AZUL } }; c.alignment = { vertical: 'middle' }; });
+  GUIA_PLANTILLA.forEach((g, k) => {
+    const r = gi.getRow(ini + 1 + k);
+    r.values = g;
+    r.eachCell({ includeEmpty: true }, c => { c.alignment = { wrapText: true, vertical: 'top' }; c.border = { bottom: borde }; if (k % 2) c.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: GRIS } }; });
+    r.getCell(1).font = { bold: true, color: { argb: AZUL } };
+    if (g[1] !== 'No') r.getCell(2).font = { bold: true, color: { argb: 'FFB3261E' } };
+  });
+  wb.removeWorksheet(ls.id);
+  const ls2 = wb.addWorksheet('Listas', { state: 'veryHidden' });
+  [['Tipo', TIPOS], ['Cuartil', ORDEN_Q], ['Línea', LINEAS], ['Programa', PROGRAMAS]].forEach(([t, v], j) => { ls2.getCell(1, j + 1).value = t; v.forEach((x, k) => { ls2.getCell(k + 2, j + 1).value = x; }); });
+  wb.views = [{ activeTab: 0 }];
+  const buf = await wb.xlsx.writeBuffer();
+  descargar(nombre, buf, 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
 }
 
 function conteo(lista, fn) {
@@ -753,7 +866,7 @@ function esqueleto() {
 <div><h1 class="hero-title">Repositorio de Producción Científica</h1><p class="hero-sub">Conocimiento generado por estudiantes, egresados y profesores de los doctorados de la Facultad de Educación. Explore por programa, tema, autor o año.</p></div>
 <div class="hero-kpis" id="kpis"></div>
 </div>
-<div class="programas" role="group" aria-label="Filtrar por programa"><button data-programa="" aria-pressed="true">Todos los doctorados</button><button data-programa="Doctorado en Educación" aria-pressed="false">Doctorado en Educación</button><button data-programa="Doctorado en Innovación Educativa con uso de TIC" aria-pressed="false">DieTic</button></div>
+<div class="programas" role="group" aria-label="Filtrar por programa"><button data-programa="" aria-pressed="true"><span class="prog-cifra"><strong class="prog-n" data-n="0">0</strong><span class="prog-u">publicaciones</span></span><span class="prog-etq">Todos los doctorados</span></button><button data-programa="Doctorado en Educación" aria-pressed="false"><span class="prog-cifra"><strong class="prog-n" data-n="0">0</strong><span class="prog-u">publicaciones</span></span><span class="prog-etq">Doctorado en Educación</span></button><button data-programa="Doctorado en Innovación Educativa con uso de TIC" aria-pressed="false"><span class="prog-cifra"><strong class="prog-n" data-n="0">0</strong><span class="prog-u">publicaciones</span></span><span class="prog-etq">DieTic</span></button></div>
 <label class="buscador" for="q"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg><input id="q" type="search" placeholder="Buscar por título, autor, revista o palabra clave" autocomplete="off" aria-label="Buscar publicaciones"></label>
 <div class="temas" id="temas" hidden></div>
 <div class="crono" id="crono" hidden><div class="crono-tit"><strong>Trayectoria</strong>Publicaciones por año. Seleccione un año para filtrar.</div><div class="barras" id="barras"></div></div>
@@ -792,13 +905,30 @@ function pintarGestion() {
 <div class="gestion-btns"><button class="btn btn-aqua" data-accion="conectar">Conectar con Google Sheets</button><button class="btn btn-sec" data-accion="salir">Salir</button></div>`;
 }
 
+function contar(el, fin) {
+  if (!el) return;
+  const ini = +el.dataset.n || 0;
+  el.dataset.n = fin;
+  const tk = el._tk = {};
+  if (ini === fin || matchMedia('(prefers-reduced-motion: reduce)').matches) { el.textContent = fin; return; }
+  const t0 = performance.now(), dur = 1500;
+  const paso = t => {
+    if (el._tk !== tk) return;
+    const k = Math.min(1, (t - t0) / dur);
+    el.textContent = Math.round(ini + (fin - ini) * (1 - Math.pow(1 - k, 3)));
+    if (k < 1) requestAnimationFrame(paso);
+  };
+  requestAnimationFrame(paso);
+}
+
 function preparar() {
   const base = ambito();
   document.querySelectorAll('.programas [data-programa]').forEach(b => {
-    if (!b.dataset.etq) b.dataset.etq = b.textContent;
     const p = b.dataset.programa;
     const n = p ? datos.filter(a => a.programa === p || a.programa === PROGRAMAS[2]).length : datos.length;
-    b.textContent = b.dataset.etq + ' (' + n + ')';
+    contar(b.querySelector('.prog-n'), n);
+    b.querySelector('.prog-u').textContent = n === 1 ? 'publicación' : 'publicaciones';
+    b.setAttribute('aria-label', b.querySelector('.prog-etq').textContent + ': ' + n + (n === 1 ? ' publicación' : ' publicaciones'));
   });
   const autores = unicos(base.flatMap(autoresDe));
   opciones('fLinea', unicos(base.map(a => a.linea)).sort(es), 'Todas');
@@ -824,7 +954,7 @@ function item(a) {
   const url = enlace(a), intel = seguro(a.intellectum);
   return `<article class="item"><div class="item-anio">${esc(a.anio || '—')}</div><div>
 ${a.programa ? `<span class="item-prog">${esc(CORTO[a.programa] || a.programa)}</span>` : ''}${a.cohorte ? `<span class="item-coh">Cohorte ${esc(a.cohorte)}</span>` : ''}${a.linea ? `<span class="item-linea">${esc(a.linea)}</span>` : ''}
-<h3><button class="item-titulo" data-det="${esc(a.id)}">${esc(a.titulo)}</button></h3>
+<h3>${url ? `<a class="item-titulo" href="${esc(url)}" target="_blank" rel="noopener" title="Abrir el artículo">${esc(a.titulo)}</a>` : `<button class="item-titulo" data-det="${esc(a.id)}">${esc(a.titulo)}</button>`}</h3>
 <p class="item-autores">${autoresDe(a).map(n => `<button class="autor" data-autor="${esc(n)}" title="Ver publicaciones de ${esc(n)}">${esc(n)}</button>`).join('; ')}</p>
 <p class="item-fuente">${a.revista ? `<em>${esc(a.revista)}</em>` : ''}${a.cuartil ? `<span class="q q-${esc(a.cuartil.replace(/\s/g, ''))}">${esc(a.cuartil)}</span>` : ''}</p>
 <div class="item-acciones">${url ? `<a href="${esc(url)}" target="_blank" rel="noopener">Ver artículo ${ICONO_EXT}</a>` : ''}${intel ? `<a href="${esc(intel)}" target="_blank" rel="noopener">Intellectum ${ICONO_EXT}</a>` : ''}<button class="btn-txt" data-det="${esc(a.id)}">Ver detalle</button><button class="btn-txt" data-cita="${esc(a.id)}">Copiar cita</button>${editable() ? `<span class="item-admin"><button class="btn-txt" data-editar="${esc(a.id)}">Editar</button><button class="btn-txt rojo" data-eliminar="${esc(a.id)}">Eliminar</button></span>` : ''}</div>
@@ -864,7 +994,7 @@ ${a.revista ? `<dt>Revista</dt><dd>${esc(a.revista)}${a.cuartil ? ' (' + esc(a.c
 ${a.cohorte ? `<dt>Cohorte</dt><dd>${esc(a.cohorte)}</dd>` : ''}
 <dt>Año</dt><dd>${esc(a.anio)}</dd>
 <dt>Tipo</dt><dd>${esc(a.tipo)}</dd>
-${a.doi ? `<dt>DOI</dt><dd>${esc(a.doi)}</dd>` : ''}
+${a.doi ? `<dt>DOI</dt><dd><a href="https://doi.org/${esc(a.doi)}" target="_blank" rel="noopener">${esc(a.doi)}</a></dd>` : ''}
 ${a.issn ? `<dt>ISSN</dt><dd>${esc(a.issn)}</dd>` : ''}
 ${claves.length ? `<dt>Palabras clave</dt><dd class="claves">${claves.map(k => `<button class="clave" data-clave="${esc(k)}">${esc(k)}</button>`).join('')}</dd>` : ''}
 </dl>${a.resumen ? `<p class="det-resumen">${esc(a.resumen)}</p>` : ''}
@@ -889,7 +1019,7 @@ ${campo('revista', 'Revista o editorial', a, { ancho: 1 })}
 ${campo('cuartil', 'Cuartil', a, { opciones: [['', 'Sin dato'], ...ORDEN_Q.map(q => [q, q])] })}
 ${campo('linea', 'Línea de investigación', a, { opciones: opcionesLinea(a.linea) })}
 ${campo('palabras', 'Palabras clave', a, { ancho: 1, ayuda: 'Separadas por punto y coma' })}
-${campo('url', 'Enlace al artículo', a, { ph: 'https://' })}
+${campo('url', 'Enlace al artículo en la revista', a, { ph: 'https://', ayuda: 'El título y «Ver artículo» llevan a este enlace. Si está vacío, llevan al DOI.' })}
 ${campo('intellectum', 'Enlace en Intellectum', a, { ph: 'https://intellectum.unisabana.edu.co/' })}
 ${campo('resumen', 'Resumen', a, { area: 1, ancho: 1, ayuda: 'Máximo 1.000 caracteres' })}
 ${campo('issn', 'ISSN', a, { ph: '0000-0000', ayuda: 'Con el ISSN se busca el cuartil en SCImago al guardar.' })}
@@ -1487,7 +1617,7 @@ function enlazar() {
       excel: dialogoExcel,
       leerExcel,
       archivo: dialogoArchivo,
-      plantilla: () => descargar('plantilla_produccion_cientifica.csv', csv([ENCABEZADOS, ['Título de ejemplo', 'Apellido, Nombre; Apellido, Nombre', '2025', 'Artículo', 'Nombre de la revista', 'Q2', 'Línea de investigación', 'palabra uno; palabra dos', '10.xxxx/xxxxx', '', '', '', 'Doctorado en Educación', '2022-1', '']]), 'text/csv;charset=utf-8'),
+      plantilla: () => descargarPlantilla(),
       agregar: agregarPendientes,
       clave: dialogoClave,
       completarDoi: () => completarDoi(t)
