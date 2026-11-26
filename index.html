@@ -311,17 +311,40 @@ function sincronizar() {
   pintar();
 }
 
-function filtrar() {
+function coincide(a, sinAnio) {
   const t = norm(est.q).split(/\s+/).filter(Boolean);
-  return ambito().filter(a => {
-    if (est.linea && a.linea !== est.linea) return false;
-    if (est.autor && !autoresDe(a).includes(est.autor)) return false;
-    if (est.anio && a.anio !== est.anio) return false;
-    if (est.cuartil === 'Sin cuartil' ? (a.cuartil && a.cuartil !== 'Sin cuartil') : (est.cuartil && a.cuartil !== est.cuartil)) return false;
-    if (est.cohorte && a.cohorte !== est.cohorte) return false;
-    const txt = norm([a.titulo, a.autores, a.revista, a.palabras, a.linea, a.resumen, a.anio].join(' '));
-    return t.every(x => txt.includes(x));
-  }).sort(ORDENES[est.orden] || ORDENES.reciente);
+  if (est.linea && a.linea !== est.linea) return false;
+  if (est.autor && !autoresDe(a).includes(est.autor)) return false;
+  if (!sinAnio && est.anio && a.anio !== est.anio) return false;
+  if (est.cuartil === 'Sin cuartil' ? (a.cuartil && a.cuartil !== 'Sin cuartil') : (est.cuartil && a.cuartil !== est.cuartil)) return false;
+  if (est.cohorte && a.cohorte !== est.cohorte) return false;
+  const txt = norm([a.titulo, a.autores, a.revista, a.palabras, a.linea, a.resumen, a.anio].join(' '));
+  return t.every(x => txt.includes(x));
+}
+
+function filtrar() {
+  return ambito().filter(a => coincide(a)).sort(ORDENES[est.orden] || ORDENES.reciente);
+}
+
+function actualizarCajas(visibles) {
+  const enPrograma = (a, p) => !p || a.programa === p || a.programa === PROGRAMAS[2];
+  const conFiltros = datos.filter(a => coincide(a));
+  document.querySelectorAll('.programas [data-programa]').forEach(b => {
+    const p = b.dataset.programa;
+    const n = conFiltros.filter(a => enPrograma(a, p)).length;
+    contar(b.querySelector('.prog-n'), n);
+    b.querySelector('.prog-u').textContent = n === 1 ? 'publicación' : 'publicaciones';
+    b.setAttribute('aria-label', b.querySelector('.prog-etq').textContent + ': ' + n + (n === 1 ? ' publicación' : ' publicaciones'));
+  });
+  const autores = unicos(visibles.flatMap(autoresDe));
+  $('kpis').innerHTML = `<div class="kpi-chip"><strong>${visibles.length}</strong><span>${visibles.length === 1 ? 'Publicación' : 'Publicaciones'}</span></div><div class="kpi-chip"><strong>${autores.length}</strong><span>${autores.length === 1 ? 'Autor' : 'Autores'}</span></div><div class="kpi-chip"><strong>${unicos(visibles.map(a => a.revista)).length}</strong><span>${unicos(visibles.map(a => a.revista)).length === 1 ? 'Revista' : 'Revistas'}</span></div>`;
+  const base = ambito();
+  const anios = unicos(base.map(a => a.anio)).sort();
+  const cuenta = {};
+  base.filter(a => coincide(a, true)).forEach(a => { if (a.anio) cuenta[a.anio] = (cuenta[a.anio] || 0) + 1; });
+  const max = Math.max(1, ...Object.values(cuenta));
+  $('crono').hidden = !anios.length;
+  $('barras').innerHTML = anios.map(y => { const n = cuenta[y] || 0; return `<button class="barra-anio" data-anio="${esc(y)}" aria-pressed="${y === est.anio}" aria-label="${n} publicaciones en ${esc(y)}"><b>${n}</b><i style="height:${n ? Math.max(4, Math.round(n / max * 76)) : 2}px${n ? '' : ';opacity:.35'}"></i><span>${esc(y)}</span></button>`; }).join('');
 }
 
 function abrir(html) {
@@ -923,29 +946,15 @@ function contar(el, fin) {
 
 function preparar() {
   const base = ambito();
-  document.querySelectorAll('.programas [data-programa]').forEach(b => {
-    const p = b.dataset.programa;
-    const n = p ? datos.filter(a => a.programa === p || a.programa === PROGRAMAS[2]).length : datos.length;
-    contar(b.querySelector('.prog-n'), n);
-    b.querySelector('.prog-u').textContent = n === 1 ? 'publicación' : 'publicaciones';
-    b.setAttribute('aria-label', b.querySelector('.prog-etq').textContent + ': ' + n + (n === 1 ? ' publicación' : ' publicaciones'));
-  });
   const autores = unicos(base.flatMap(autoresDe));
   opciones('fLinea', unicos(base.map(a => a.linea)).sort(es), 'Todas');
   opciones('fAutor', [...autores].sort(es), 'Todos');
   opciones('fAnio', unicos(base.map(a => a.anio)).sort((a, b) => b - a), 'Todos');
   opciones('fCuartil', ORDEN_Q.filter(q => q === 'Sin cuartil' ? base.some(a => !a.cuartil || a.cuartil === q) : base.some(a => a.cuartil === q)), 'Todos');
   opciones('fCohorte', unicos(base.map(a => a.cohorte)).sort().reverse(), 'Todas');
-  $('kpis').innerHTML = `<div class="kpi-chip"><strong>${base.length}</strong><span>Publicaciones</span></div><div class="kpi-chip"><strong>${autores.length}</strong><span>Autores</span></div><div class="kpi-chip"><strong>${unicos(base.map(a => a.revista)).length}</strong><span>Revistas</span></div>`;
   const temas = temasFrecuentes();
   $('temas').hidden = !temas.length;
   $('temas').innerHTML = '<span>Temas frecuentes</span>' + temas.map(t => `<button class="tema" data-tema="${esc(t)}" aria-pressed="false">${esc(t)}</button>`).join('');
-  const cuenta = {};
-  base.forEach(a => { if (a.anio) cuenta[a.anio] = (cuenta[a.anio] || 0) + 1; });
-  const anios = Object.keys(cuenta).sort();
-  const max = Math.max(1, ...Object.values(cuenta));
-  $('crono').hidden = !anios.length;
-  $('barras').innerHTML = anios.map(y => `<button class="barra-anio" data-anio="${esc(y)}" aria-pressed="false" aria-label="${cuenta[y]} publicaciones en ${esc(y)}"><b>${cuenta[y]}</b><i style="height:${Math.max(4, Math.round(cuenta[y] / max * 76))}px"></i><span>${esc(y)}</span></button>`).join('');
 }
 
 const editable = () => admin && !!API;
@@ -962,7 +971,6 @@ ${a.programa ? `<span class="item-prog">${esc(CORTO[a.programa] || a.programa)}<
 }
 
 function pintar() {
-  document.querySelectorAll('.barra-anio').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.anio === est.anio)));
   document.querySelectorAll('.tema').forEach(b => b.setAttribute('aria-pressed', String(norm(b.dataset.tema) === norm(est.q))));
   const nota = fuente === 'respaldo' ? ' · copia de respaldo' : '';
   document.querySelectorAll('[data-programa]').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.programa === est.programa)));
@@ -970,6 +978,7 @@ function pintar() {
   const filtros = document.querySelector('.filtros');
   if (filtros) filtros.hidden = !total;
   if (!total) {
+    actualizarCajas([]);
     $('conteo').textContent = '';
     $('lista').innerHTML = editable()
       ? '<div class="vacio"><p>El repositorio está conectado a Google Sheets. Agregue la primera publicación con su DOI.</p><button class="btn" data-accion="dois">Agregar por DOI</button></div>'
@@ -977,6 +986,7 @@ function pintar() {
     return;
   }
   const r = filtrar();
+  actualizarCajas(r);
   $('conteo').textContent = (r.length === total ? `${total} publicaciones` : `${r.length} de ${total} publicaciones`) + nota;
   $('lista').innerHTML = r.length ? r.map(item).join('') : '<div class="vacio"><p>Ninguna publicación coincide con estos criterios.</p><button class="btn btn-sec" data-accion="limpiar">Limpiar filtros</button></div>';
 }
